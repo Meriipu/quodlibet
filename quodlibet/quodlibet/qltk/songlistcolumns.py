@@ -281,7 +281,7 @@ class DateColumn(WideTextColumn):
                                             "datecolumn_timestamp_format")
 
             # default behaviour
-            if format_setting == "":
+            if not format_setting:
                 if days == 0:
                     format_ = "%X"
                 elif days < 7:
