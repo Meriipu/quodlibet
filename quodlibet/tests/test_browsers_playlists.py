@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 # This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License version 2 as
-# published by the Free Software Foundation
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
 from gi.repository import Gdk, Gtk
 from senf import fsnative, fsn2uri, fsn2bytes
@@ -9,19 +10,20 @@ from senf import fsnative, fsn2uri, fsn2bytes
 from quodlibet import app
 from quodlibet import qltk
 from quodlibet.browsers.playlists.prefs import DEFAULT_PATTERN_TEXT
-from quodlibet.browsers.playlists.util import PLAYLISTS, parse_m3u, parse_pls
+from quodlibet.browsers.playlists.util import PLAYLISTS, parse_m3u, \
+    parse_pls, _name_for
 from quodlibet.qltk.songlist import DND_QL
 from quodlibet.util.collection import FileBackedPlaylist
 from tests import TestCase, get_data_path, mkstemp, mkdtemp, _TEMP_DIR, \
     init_fake_app, destroy_fake_app
 from tests.gtk_helpers import MockSelData
-from .helper import dummy_path
+from .helper import dummy_path, __
 
 import os
 import shutil
 
 from quodlibet.browsers.playlists import PlaylistsBrowser
-from quodlibet.library import SongLibrary
+from quodlibet.library import SongFileLibrary
 import quodlibet.config
 from quodlibet.formats import AudioFile
 from quodlibet.util.path import mkdir
@@ -184,7 +186,7 @@ class TPlaylistsBrowser(TSearchBar):
 
         init_fake_app()
 
-        self.lib = quodlibet.browsers.playlists.library = SongLibrary()
+        self.lib = quodlibet.browsers.playlists.library = SongFileLibrary()
         self.lib.librarian = SongLibrarian()
         all_songs = SONGS + [self.ANOTHER_SONG]
         for af in all_songs:
@@ -295,3 +297,13 @@ class TPlaylistsBrowser(TSearchBar):
     @staticmethod
     def _fake_browser_pack(b):
         app.window.get_child().pack_start(b, True, True, 0)
+
+
+class TPlaylistUtils(TestCase):
+
+    def test_naming(self):
+        self.failUnlessEqual(_name_for('/foo/bar.m3u'), 'bar')
+        self.failUnlessEqual(_name_for('/foo/Will.I.Am.m3u'), 'Will.I.Am')
+
+    def test_naming_default(self):
+        self.failUnlessEqual(_name_for(''), __('New Playlist'))

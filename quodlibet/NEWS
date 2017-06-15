@@ -1,3 +1,25 @@
+.. _release-3.10.0:
+
+3.10.0 (2017-??-??)
+-------------------
+
+Packaging Changes:
+  * **Mutagen 1.34** required
+  * **media-player-info** no longer required
+  * **udisks2** no longer required
+
+
+.. _release-3.9.1:
+
+3.9.1 (2017-06-06) - CHECK AND MATE, FAILING BODY AND MIND
+----------------------------------------------------------
+
+  * Danish translation update :pr:`2394` (:user:`scootergrisen`)
+  * Various bug fixes: :bug:`2409` :bug:`2364` :bug:`2406` :bug:`2401`
+    :bug:`2410` :bug:`2414` :bug:`2387` :bug:`2411` :bug:`2386` :bug:`2400`
+    :bug:`2404` (:user:`Nick Boultbee <declension>` et al.)
+
+
 .. _release-3.9.0:
 
 3.9.0 (2017-05-24) - If you can whistle, you can do this too
@@ -66,7 +88,7 @@ Plugins:
   * Add a plugin to export a playlist to a folder :pr:`2307`
     (:user:`Didier Villevalois <ptitjes>`)
   * Add skip by rating plugin :pr:`2201` (:user:`Jason Heard <101100>`)
-  * Advanced Prefaulthandlerfs: add a configuration for the window title pattern :pr:`2272`
+  * Advanced Prefs: add a configuration for the window title pattern :pr:`2272`
     (:user:`Didier Villevalois <ptitjes>`)
   * waveformseekbar: add hidpi detection :pr:`2261`
     (:user:`Didier Villevalois <ptitjes>`)

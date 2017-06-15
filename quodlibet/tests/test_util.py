@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 # This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License version 2 as
-# published by the Free Software Foundation
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
 import uuid
 import tempfile
@@ -491,8 +492,8 @@ class Tsplit_people(TestCase):
 
     def test_cover(self):
         self.failUnlessEqual(
-            split_people("Pyscho Killer [Talking Heads Cover]"),
-            ("Pyscho Killer", ["Talking Heads"]))
+            split_people("Psycho Killer [Talking Heads Cover]"),
+            ("Psycho Killer", ["Talking Heads"]))
 
 
 class Ttag(TestCase):

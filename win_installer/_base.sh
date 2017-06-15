@@ -88,6 +88,10 @@ function extract_installer {
 
 function install_deps {
 
+    # We don't use the fontconfig backend, and this skips the lengthy
+    # cache update step during package installation
+    export MSYS2_FC_CACHE_SKIP=1
+
     build_pacman --noconfirm -S git mingw-w64-"${ARCH}"-gdk-pixbuf2 \
         mingw-w64-"${ARCH}"-librsvg \
         mingw-w64-"${ARCH}"-gtk3 mingw-w64-"${ARCH}"-"${PYTHON_ID}" \
@@ -316,7 +320,7 @@ function cleanup_after {
     find "${MINGW_ROOT}"/bin -name "*.pyc" -exec rm -f {} \;
     find "${MINGW_ROOT}" -type d -name "__pycache__" -prune -exec rm -rf {} \;
 
-    build_python "${MISC}/depcheck.py"
+    build_python "${MISC}/depcheck.py" --delete
 
     find "${MINGW_ROOT}" -type d -empty -delete
 }
