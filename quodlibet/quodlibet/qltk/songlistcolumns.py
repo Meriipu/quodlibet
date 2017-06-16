@@ -274,25 +274,29 @@ class DateColumn(WideTextColumn):
         if not stamp:
             cell.set_property('text', _("Never"))
         else:
-            date = datetime.datetime.fromtimestamp(stamp).date()
-            today = datetime.datetime.now().date()
-            days = (today - date).days
-            format_setting = config.gettext("settings",
-                                            "datecolumn_timestamp_format")
-
-            # default behaviour
-            if not format_setting:
-                if days == 0:
-                    format_ = "%X"
-                elif days < 7:
-                    format_ = "%A"
-                else:
-                    format_ = "%x"
+            try:
+                date = datetime.datetime.fromtimestamp(stamp).date()
+            except (OverflowError, ValueError, OSError):
+                text = u""
             else:
-                format_ = format_setting
+                format_setting = config.gettext("settings",
+                                      "datecolumn_timestamp_format")
 
-            stamp = time.localtime(stamp)
-            text = time.strftime(format_, stamp)
+                # default behaviour
+                if not format_setting:
+                    today = datetime.datetime.now().date()
+                    days = (today - date).days
+                    if days == 0:
+                        format_ = "%X"
+                    elif days < 7:
+                        format_ = "%A"
+                    else:
+                        format_ = "%x"
+                else:
+                    format_ = format_setting
+
+                stamp = time.localtime(stamp)
+                text = time.strftime(format_, stamp)
             cell.set_property('text', text)
 
 
