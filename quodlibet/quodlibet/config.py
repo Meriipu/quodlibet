@@ -150,6 +150,10 @@ INITIAL = {
 
         # the pattern for the main window title
         "window_title_pattern": "~title~version~~people",
+
+        # the ellipsizing mode to use for SongColumn filepaths
+        # "1" Start, "2" Middle, "3" End
+        "ellipsizing_mode": "2",
     },
     "rename": {
         "spaces": "false",
