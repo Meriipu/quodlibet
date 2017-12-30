@@ -55,7 +55,7 @@ class GetPlaylistName(GetStringDialog):
 
 
 def confirm_playlist_song_removal(parent, songs):
-    '''confirm removals of songs from playlist'''
+    '''confirm removal of songs from playlist'''
     songs = set(songs)
     if not songs:
         return True

@@ -152,6 +152,8 @@ class PlaylistsBrowser(Browser, DisplayPatternMixin):
         model, iters = self.__get_selected_songs()
         remove = qltk.MenuItem(_("_Remove from Playlist"), Icons.LIST_REMOVE)
         qltk.add_fake_accel(remove, "Delete")
+        # The last parameter (False) is to make the removal handler create
+        # a prompt for the user to confirm the removals (i.e not skip it)
         connect_obj(remove, 'activate', self.__remove, iters, model, False)
         playlist_iter = self.__selected_playlists()[1]
         remove.set_sensitive(bool(playlist_iter))
@@ -273,6 +275,11 @@ class PlaylistsBrowser(Browser, DisplayPatternMixin):
         return render
 
     def key_pressed(self, event, skip_prompt=False):
+        """Pass skip_prompt=True to avoid creating a confirmation prompt
+           Useful in the case of tests, which might handle prompts poorly
+
+           The default behaviour is to create the prompt
+        """
         if qltk.is_accel(event, "Delete"):
             self.__handle_songlist_delete(skip_prompt)
             return True
@@ -316,7 +323,9 @@ class PlaylistsBrowser(Browser, DisplayPatternMixin):
         view.get_parent().drag_unhighlight()
 
     def __remove(self, iters, smodel, skip_removal_prompt=True):
-
+        """skip_removal_prompt controls whether a prompt is created for
+           the user to confirm the song removals or not.
+        """
         def song_at(itr):
             return smodel[smodel.get_path(itr)][0]
 
