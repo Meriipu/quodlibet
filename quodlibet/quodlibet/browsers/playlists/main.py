@@ -38,7 +38,8 @@ from quodlibet.util.collection import FileBackedPlaylist
 from quodlibet.util.urllib import urlopen
 
 from .util import parse_m3u, parse_pls, PLAYLISTS,\
-    ConfirmRemovePlaylistDialog, _name_for
+    ConfirmRemovePlaylistDialog, _name_for,\
+    confirm_playlist_song_removal
 
 DND_QL, DND_URI_LIST, DND_MOZ_URL = range(3)
 
@@ -151,7 +152,7 @@ class PlaylistsBrowser(Browser, DisplayPatternMixin):
         model, iters = self.__get_selected_songs()
         remove = qltk.MenuItem(_("_Remove from Playlist"), Icons.LIST_REMOVE)
         qltk.add_fake_accel(remove, "Delete")
-        connect_obj(remove, 'activate', self.__remove, iters, model)
+        connect_obj(remove, 'activate', self.__remove, iters, model, False)
         playlist_iter = self.__selected_playlists()[1]
         remove.set_sensitive(bool(playlist_iter))
         items.append([remove])
@@ -271,15 +272,15 @@ class PlaylistsBrowser(Browser, DisplayPatternMixin):
         render.connect('edited', self.__edited)
         return render
 
-    def key_pressed(self, event):
+    def key_pressed(self, event, skip_prompt=False):
         if qltk.is_accel(event, "Delete"):
-            self.__handle_songlist_delete()
+            self.__handle_songlist_delete(skip_prompt)
             return True
         return False
 
-    def __handle_songlist_delete(self, *args):
+    def __handle_songlist_delete(self, skip_prompt=True, *args):
         model, iters = self.__get_selected_songs()
-        self.__remove(iters, model)
+        self.__remove(iters, model, skip_removal_prompt=skip_prompt)
 
     def __key_pressed(self, widget, event):
         if qltk.is_accel(event, "Delete"):
@@ -314,7 +315,8 @@ class PlaylistsBrowser(Browser, DisplayPatternMixin):
     def __drag_leave(self, view, ctx, time):
         view.get_parent().drag_unhighlight()
 
-    def __remove(self, iters, smodel):
+    def __remove(self, iters, smodel, skip_removal_prompt=True):
+
         def song_at(itr):
             return smodel[smodel.get_path(itr)][0]
 
@@ -331,6 +333,15 @@ class PlaylistsBrowser(Browser, DisplayPatternMixin):
             if not removals:
                 print_w("No songs selected to remove")
                 return
+
+            if not skip_removal_prompt:
+                parent = self
+                songset = {removals[key] for key in removals}
+                prompt = confirm_playlist_song_removal(parent, songset)
+                if not prompt:
+                    print_d("Removal from playlist stopped via prompt")
+                    return
+
             if self._query is None or not self.get_filter_text():
                 # Calling playlist.remove_songs(songs) won't remove the
                 # right ones if there are duplicates

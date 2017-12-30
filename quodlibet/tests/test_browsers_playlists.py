@@ -286,7 +286,7 @@ class TPlaylistsBrowser(TSearchBar):
         app.window.songlist.select_by_func(lambda x: True,
                                            scroll=False, one=True)
         original_length = len(first_pl)
-        ret = b.key_pressed(event)
+        ret = b.key_pressed(event, skip_prompt=True)
         self.failUnless(ret, msg="Didn't simulate a delete keypress")
         self.failUnlessEqual(len(first_pl), original_length - 1)
 
