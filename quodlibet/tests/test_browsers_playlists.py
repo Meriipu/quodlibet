@@ -269,26 +269,14 @@ class TPlaylistsBrowser(TSearchBar):
         qltk.selection_set_songs(sel, [song])
         b._drag_data_get(None, None, sel, DND_QL, None)
 
-    def test_deletion(self):
-        """Tests both that no change occurs if the response is decline, and
-           that the desired change occurs if the response is accept.
-        """
-        def a_delete_event():
-            ev = Gdk.Event()
-            ev.type = Gdk.EventType.KEY_PRESS
-            ev.keyval, accel_mod = Gtk.accelerator_parse("Delete")
-            ev.state = Gtk.accelerator_get_default_mod_mask() & accel_mod
-            return ev
-
+    def test_deletion_accept(self):
+        """Tests that the desired change occurs if the response is accept"""
         def simple_accept(parent, songs):
             return True
 
-        def simple_decline(parent, songs):
-            return False
-
         b = self.bar
         self._fake_browser_pack(b)
-        event = a_delete_event()
+        event = self._a_delete_event()
         # This is selected in setUp()
         first_pl = b.playlists()[0]
         app.window.songlist.set_songs(first_pl)
@@ -296,28 +284,42 @@ class TPlaylistsBrowser(TSearchBar):
                                            scroll=False, one=True)
         original_length = len(first_pl)
 
+        # Temporarily replace code that creates a prompt for the user
+        # to avoid test getting stuck, here with an accepting function.
         tmp_confirmal = util.confirm_playlist_song_removal.__code__
+        util.confirm_playlist_song_removal.__code__ = simple_accept.__code__
+        ret = b.key_pressed(event)
+        self.failUnless(ret, msg="Didn't simulate a delete keypress")
+        # the prompt response (simple_accept) is True, so a removal should
+        # have occurred
+        self.failUnlessEqual(len(first_pl), original_length - 1)
+        # add back old behaviour for good measure
+        util.confirm_playlist_song_removal.__code__ = tmp_confirmal
+
+    def test_deletion_decline(self):
+        """Tests that no change occurs if the response is decline"""
+        def simple_decline(parent, songs):
+            return False
+
+        b = self.bar
+        self._fake_browser_pack(b)
+        event = self._a_delete_event()
+        # This is selected in setUp()
+        first_pl = b.playlists()[0]
+        app.window.songlist.set_songs(first_pl)
+        app.window.songlist.select_by_func(lambda x: True,
+                                           scroll=False, one=True)
+        original_length = len(first_pl)
+
         # Temporarily replace code that creates a prompt for the user
         # to avoid test getting stuck, here with a declining function.
-        #
-        # First test the case where the user declines the action
+        tmp_confirmal = util.confirm_playlist_song_removal.__code__
         util.confirm_playlist_song_removal.__code__ = simple_decline.__code__
-        # Send a press simulating deletion
         ret = b.key_pressed(event)
         self.failUnless(ret, msg="Didn't simulate a delete keypress")
-        # the prompt response (simple_decline) is False, so no removal
-        # should have occurred
+        # the prompt response (simple_decline) is False, so no removal should
+        # have occurred
         self.failUnlessEqual(len(first_pl), original_length)
-
-        # Then test the case where the user accepts the action
-        util.confirm_playlist_song_removal.__code__ = simple_accept.__code__
-        # Send a press simulating deletion
-        ret = b.key_pressed(event)
-        self.failUnless(ret, msg="Didn't simulate a delete keypress")
-        # the prompt response (simple_accept) is True, so a removal
-        # should have occurred
-        self.failUnlessEqual(len(first_pl), original_length - 1)
-
         # add back old behaviour for good measure
         util.confirm_playlist_song_removal.__code__ = tmp_confirmal
 
@@ -345,6 +347,14 @@ class TPlaylistsBrowser(TSearchBar):
     @staticmethod
     def _fake_browser_pack(b):
         app.window.get_child().pack_start(b, True, True, 0)
+
+    @staticmethod
+    def _a_delete_event():
+        ev = Gdk.Event()
+        ev.type = Gdk.EventType.KEY_PRESS
+        ev.keyval, accel_mod = Gtk.accelerator_parse("Delete")
+        ev.state = Gtk.accelerator_get_default_mod_mask() & accel_mod
+        return ev
 
 
 class TPlaylistUtils(TestCase):
