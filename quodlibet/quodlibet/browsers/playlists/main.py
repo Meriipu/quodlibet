@@ -152,9 +152,7 @@ class PlaylistsBrowser(Browser, DisplayPatternMixin):
         model, iters = self.__get_selected_songs()
         remove = qltk.MenuItem(_("_Remove from Playlist"), Icons.LIST_REMOVE)
         qltk.add_fake_accel(remove, "Delete")
-        # The last parameter (False) is to make the removal handler create
-        # a prompt for the user to confirm the removals (i.e not skip it)
-        connect_obj(remove, 'activate', self.__remove, iters, model, False)
+        connect_obj(remove, 'activate', self.__remove, iters, model)
         playlist_iter = self.__selected_playlists()[1]
         remove.set_sensitive(bool(playlist_iter))
         items.append([remove])
@@ -274,20 +272,15 @@ class PlaylistsBrowser(Browser, DisplayPatternMixin):
         render.connect('edited', self.__edited)
         return render
 
-    def key_pressed(self, event, skip_prompt=False):
-        """Pass skip_prompt=True to avoid creating a confirmation prompt
-           Useful in the case of tests, which might handle prompts poorly
-
-           The default behaviour is to create the prompt
-        """
+    def key_pressed(self, event):
         if qltk.is_accel(event, "Delete"):
-            self.__handle_songlist_delete(skip_prompt)
+            self.__handle_songlist_delete()
             return True
         return False
 
-    def __handle_songlist_delete(self, skip_prompt=True, *args):
+    def __handle_songlist_delete(self, *args):
         model, iters = self.__get_selected_songs()
-        self.__remove(iters, model, skip_removal_prompt=skip_prompt)
+        self.__remove(iters, model)
 
     def __key_pressed(self, widget, event):
         if qltk.is_accel(event, "Delete"):
@@ -322,10 +315,7 @@ class PlaylistsBrowser(Browser, DisplayPatternMixin):
     def __drag_leave(self, view, ctx, time):
         view.get_parent().drag_unhighlight()
 
-    def __remove(self, iters, smodel, skip_removal_prompt=True):
-        """skip_removal_prompt controls whether a prompt is created for
-           the user to confirm the song removals or not.
-        """
+    def __remove(self, iters, smodel):
         def song_at(itr):
             return smodel[smodel.get_path(itr)][0]
 
@@ -343,13 +333,12 @@ class PlaylistsBrowser(Browser, DisplayPatternMixin):
                 print_w("No songs selected to remove")
                 return
 
-            if not skip_removal_prompt:
-                parent = self
-                songset = {removals[key] for key in removals}
-                prompt = confirm_playlist_song_removal(parent, songset)
-                if not prompt:
-                    print_d("Removal from playlist stopped via prompt")
-                    return
+            parent = self
+            songset = {removals[key] for key in removals}
+            prompt = confirm_playlist_song_removal(parent, songset)
+            if not prompt:
+                print_d("Removal from playlist stopped via prompt")
+                return
 
             if self._query is None or not self.get_filter_text():
                 # Calling playlist.remove_songs(songs) won't remove the

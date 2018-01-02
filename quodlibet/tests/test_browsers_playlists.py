@@ -22,7 +22,7 @@ from .helper import dummy_path, __, temp_filename
 import os
 import shutil
 
-from quodlibet.browsers.playlists import PlaylistsBrowser
+from quodlibet.browsers.playlists import PlaylistsBrowser, util
 from quodlibet.library import SongFileLibrary
 import quodlibet.config
 from quodlibet.formats import AudioFile
@@ -270,12 +270,21 @@ class TPlaylistsBrowser(TSearchBar):
         b._drag_data_get(None, None, sel, DND_QL, None)
 
     def test_deletion(self):
+        """Tests both that no change occurs if the response is decline, and
+           that the desired change occurs if the response is accept.
+        """
         def a_delete_event():
             ev = Gdk.Event()
             ev.type = Gdk.EventType.KEY_PRESS
             ev.keyval, accel_mod = Gtk.accelerator_parse("Delete")
             ev.state = Gtk.accelerator_get_default_mod_mask() & accel_mod
             return ev
+
+        def simple_accept(parent, songs):
+            return True
+
+        def simple_decline(parent, songs):
+            return False
 
         b = self.bar
         self._fake_browser_pack(b)
@@ -286,12 +295,31 @@ class TPlaylistsBrowser(TSearchBar):
         app.window.songlist.select_by_func(lambda x: True,
                                            scroll=False, one=True)
         original_length = len(first_pl)
-        # pass in skip_prompt=True to make event handler pass it along,
-        # avoiding a removal confirmation prompt being created
-        # Perhaps there are better ways to do this than passing a flag?
-        ret = b.key_pressed(event, skip_prompt=True)
+
+        tmp_confirmal = util.confirm_playlist_song_removal.__code__
+        # Temporarily replace code that creates a prompt for the user
+        # to avoid test getting stuck, here with a declining function.
+        #
+        # First test the case where the user declines the action
+        util.confirm_playlist_song_removal.__code__ = simple_decline.__code__
+        # Send a press simulating deletion
+        ret = b.key_pressed(event)
         self.failUnless(ret, msg="Didn't simulate a delete keypress")
+        # the prompt response (simple_decline) is False, so no removal
+        # should have occurred
+        self.failUnlessEqual(len(first_pl), original_length)
+
+        # Then test the case where the user accepts the action
+        util.confirm_playlist_song_removal.__code__ = simple_accept.__code__
+        # Send a press simulating deletion
+        ret = b.key_pressed(event)
+        self.failUnless(ret, msg="Didn't simulate a delete keypress")
+        # the prompt response (simple_accept) is True, so a removal
+        # should have occurred
         self.failUnlessEqual(len(first_pl), original_length - 1)
+
+        # add back old behaviour for good measure
+        util.confirm_playlist_song_removal.__code__ = tmp_confirmal
 
     def test_import(self):
         pl_name = u"_€3 œufs à Noël"
