@@ -55,7 +55,7 @@ class GetPlaylistName(GetStringDialog):
 
 
 # in a class to facilitate replacement of run function for tests
-class confirm_playlist_song_removal():
+class confirm_playlist_song_removal(object):
     def __init__(self, parent, songs):
         '''confirm removal of songs from playlist'''
         songs = set(songs)
