@@ -54,21 +54,26 @@ class GetPlaylistName(GetStringDialog):
             button_label=_("_Add"), button_icon=Icons.LIST_ADD)
 
 
-def confirm_playlist_song_removal(parent, songs):
-    '''confirm removal of songs from playlist'''
-    songs = set(songs)
-    if not songs:
-        return True
+# in a class to facilitate replacement of run function for tests
+class confirm_playlist_song_removal():
+    def __init__(self, parent, songs):
+        '''confirm removal of songs from playlist'''
+        songs = set(songs)
+        if not songs:
+            return True
 
-    count = len(songs)
-    song = next(iter(songs))
-    title = ngettext("Remove track: \"%(title)s\" from playlist?",
-                     "Remove %(count)d tracks from playlist?",
-                     count) % {'title': song('title') or song('~basename'),
-                               'count': count}
+        count = len(songs)
+        song = next(iter(songs))
+        title = ngettext("Remove track: \"%(title)s\" from playlist?",
+                         "Remove %(count)d tracks from playlist?",
+                         count) % {'title': song('title') or song('~basename'),
+                                   'count': count}
 
-    return ConfirmationPrompt.RESPONSE_INVOKE == ConfirmationPrompt(
-               parent, title, "", _("Remove from Playlist")).run()
+        self.runner = ConfirmationPrompt(parent, title, "",
+                                   _("Remove from Playlist"))
+
+    def run(self):
+        return ConfirmationPrompt.RESPONSE_INVOKE == self.runner.run()
 
 
 def parse_m3u(filelike, pl_name, library=None):

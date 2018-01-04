@@ -335,7 +335,7 @@ class PlaylistsBrowser(Browser, DisplayPatternMixin):
 
             parent = self
             songset = {removals[key] for key in removals}
-            prompt = confirm_playlist_song_removal(parent, songset)
+            prompt = confirm_playlist_song_removal(parent, songset).run()
             if not prompt:
                 print_d("Removal from playlist stopped via prompt")
                 return

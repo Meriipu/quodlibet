@@ -271,7 +271,7 @@ class TPlaylistsBrowser(TSearchBar):
 
     def test_deletion_accept(self):
         """Tests that the desired change occurs if the response is accept"""
-        def simple_accept(parent, songs):
+        def simple_accept(_self):
             return True
 
         b = self.bar
@@ -286,19 +286,19 @@ class TPlaylistsBrowser(TSearchBar):
 
         # Temporarily replace code that creates a prompt for the user
         # to avoid test getting stuck, here with an accepting function.
-        tmp_confirmal = util.confirm_playlist_song_removal.__code__
-        util.confirm_playlist_song_removal.__code__ = simple_accept.__code__
+        tmp_confirmal = util.confirm_playlist_song_removal.run
+        util.confirm_playlist_song_removal.run = simple_accept
         ret = b.key_pressed(event)
         self.failUnless(ret, msg="Didn't simulate a delete keypress")
         # the prompt response (simple_accept) is True, so a removal should
         # have occurred
         self.failUnlessEqual(len(first_pl), original_length - 1)
         # add back old behaviour for good measure
-        util.confirm_playlist_song_removal.__code__ = tmp_confirmal
+        util.confirm_playlist_song_removal.run = tmp_confirmal
 
     def test_deletion_decline(self):
         """Tests that no change occurs if the response is decline"""
-        def simple_decline(parent, songs):
+        def simple_decline(_self):
             return False
 
         b = self.bar
@@ -313,15 +313,15 @@ class TPlaylistsBrowser(TSearchBar):
 
         # Temporarily replace code that creates a prompt for the user
         # to avoid test getting stuck, here with a declining function.
-        tmp_confirmal = util.confirm_playlist_song_removal.__code__
-        util.confirm_playlist_song_removal.__code__ = simple_decline.__code__
+        tmp_confirmal = util.confirm_playlist_song_removal.run
+        util.confirm_playlist_song_removal.run = simple_decline
         ret = b.key_pressed(event)
         self.failUnless(ret, msg="Didn't simulate a delete keypress")
         # the prompt response (simple_decline) is False, so no removal should
         # have occurred
         self.failUnlessEqual(len(first_pl), original_length)
         # add back old behaviour for good measure
-        util.confirm_playlist_song_removal.__code__ = tmp_confirmal
+        util.confirm_playlist_song_removal.run = tmp_confirmal
 
     def test_import(self):
         pl_name = u"_€3 œufs à Noël"
