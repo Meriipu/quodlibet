@@ -12,7 +12,7 @@ from gi.repository import Gtk
 from senf import uri2fsn, fsnative, fsn2text, path2fsn, bytes2fsn, text2fsn
 
 import quodlibet
-from quodlibet import _, print_d
+from quodlibet import ngettext, _, print_d
 from quodlibet import formats, qltk
 from quodlibet.compat import listfilter
 from quodlibet.qltk import Icons
@@ -21,7 +21,7 @@ from quodlibet.qltk.wlw import WaitLoadWindow
 from quodlibet.util import escape
 from quodlibet.util.collection import FileBackedPlaylist
 from quodlibet.util.path import mkdir, uri_is_valid
-
+from quodlibet.qltk.msg import ConfirmationPrompt
 
 # Directory for playlist files
 PLAYLISTS = os.path.join(quodlibet.get_user_dir(), "playlists")
@@ -52,6 +52,28 @@ class GetPlaylistName(GetStringDialog):
             parent, _("New Playlist"),
             _("Enter a name for the new playlist:"),
             button_label=_("_Add"), button_icon=Icons.LIST_ADD)
+
+
+# in a class to facilitate replacement of run function for tests
+class confirm_playlist_song_removal(object):
+    def __init__(self, parent, songs):
+        '''confirm removal of songs from playlist'''
+        songs = set(songs)
+        if not songs:
+            return True
+
+        count = len(songs)
+        song = next(iter(songs))
+        title = ngettext("Remove track: \"%(title)s\" from playlist?",
+                         "Remove %(count)d tracks from playlist?",
+                         count) % {'title': song('title') or song('~basename'),
+                                   'count': count}
+
+        self.runner = ConfirmationPrompt(parent, title, "",
+                                   _("Remove from Playlist"))
+
+    def run(self):
+        return ConfirmationPrompt.RESPONSE_INVOKE == self.runner.run()
 
 
 def parse_m3u(filelike, pl_name, library=None):
