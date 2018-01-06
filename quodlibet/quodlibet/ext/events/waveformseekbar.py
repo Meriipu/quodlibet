@@ -17,8 +17,7 @@ from math import ceil, floor
 from quodlibet import _, app
 from quodlibet import print_w
 from quodlibet import util
-from quodlibet.plugins import PluginConfig, IntConfProp, \
-    ConfProp, BoolConfProp
+from quodlibet.plugins import PluginConfig, IntConfProp, ConfProp
 from quodlibet.plugins.events import EventPlugin
 from quodlibet.qltk import Align
 from quodlibet.qltk import Icons
@@ -346,8 +345,10 @@ class WaveformScale(Gtk.EventBox):
         w = min(width, abs(x2 - x1) + line_width * 10)
         return x, 0.0, w, height
 
-    def draw_waveform(self, cr, width, height, elapsed_color, hover_color,
-                      remaining_color, show_current_pos_config):
+    def draw_waveform(self, cr, width, height, elapsed_color,
+                      preview_base_color, preview_shade_color,
+                      remaining_color):
+
         if width == 0 or height == 0:
             return
         scale_factor = self.get_scale_factor()
@@ -380,24 +381,26 @@ class WaveformScale(Gtk.EventBox):
                 if mouse_position >= 0:
                     if self._seeking:
                         # The user is seeking (holding mousebutton down)
-                        fg_color = (elapsed_color if x < mouse_position
-                                    else remaining_color)
-                    elif show_current_pos_config:
-                        # Use hover color and elapsed color to display the
-                        # current playing position while hovering
                         if x < mouse_position:
                             if x < position_width:
-                                fg_color = elapsed_color
+                                fg_color = preview_shade_color
                             else:
-                                fg_color = hover_color
+                                fg_color = elapsed_color
                         elif x < position_width:
-                            fg_color = hover_color
+                            fg_color = preview_base_color
                         else:
                             fg_color = remaining_color
                     else:
-                        # The mouse is hovering the seekbar
-                        fg_color = (hover_color if x < mouse_position
-                                    else remaining_color)
+                        # The user is hovering (not holding mousebutton down)
+                        if x < mouse_position:
+                            if x < position_width:
+                                fg_color = preview_shade_color
+                            else:
+                                fg_color = preview_base_color
+                        elif x < position_width:
+                            fg_color = elapsed_color
+                        else:
+                            fg_color = remaining_color
                 else:
                     fg_color = (elapsed_color if x < position_width
                                 else remaining_color)
@@ -468,27 +471,35 @@ class WaveformScale(Gtk.EventBox):
             remaining_color = Gdk.RGBA()
             remaining_color.parse(remaining_color_config)
 
-        # Check if the user set a hover color in the config
-        hover_color_config = CONFIG.hover_color
-        if hover_color_config and Gdk.RGBA().parse(hover_color_config):
-            hover_color = Gdk.RGBA()
-            hover_color.parse(hover_color_config)
-        else:
-            # Generate default hover_color by blending elapsed_color and
-            # remaining_color
-            opacity = 0.4
-            r = (opacity * elapsed_color.alpha * elapsed_color.red +
-                 (1 - opacity) * remaining_color.alpha * remaining_color.red)
-            g = (opacity * elapsed_color.alpha * elapsed_color.green +
-                 (1 - opacity) * remaining_color.alpha * remaining_color.green)
-            b = (opacity * elapsed_color.alpha * elapsed_color.blue +
-                 (1 - opacity) * remaining_color.alpha * remaining_color.blue)
-            a = (opacity * elapsed_color.alpha +
-                 (1 - opacity) * remaining_color.alpha)
-            hover_color = Gdk.RGBA(r, g, b, a)
+        def mult(a, b, strenght):
+            return Gdk.RGBA(
+                (strenght * a.alpha * a.red +
+                    (1 - strenght) * b.alpha * b.red),
+                (strenght * a.alpha * a.green +
+                    (1 - strenght) * b.alpha * b.green),
+                (strenght * a.alpha * a.blue +
+                    (1 - strenght) * b.alpha * b.blue),
+                (strenght * a.alpha +
+                    (1 - strenght) * b.alpha)
+            )
 
-        # Check if the user turned on showing current position
-        show_current_pos_config = CONFIG.show_current_pos
+        def shade(base, strenght):
+            return Gdk.RGBA(
+                base.red * (1 - strenght),
+                base.green * (1 - strenght),
+                base.blue * (1 - strenght),
+                base.alpha
+            )
+
+        # Check if the user set a hover color in the config
+        preview_color_config = CONFIG.preview_color
+        if preview_color_config and Gdk.RGBA().parse(preview_color_config):
+            preview_base_color = Gdk.RGBA()
+            preview_base_color.parse(preview_color_config)
+            preview_shade_color = mult(preview_base_color, elapsed_color, 0.65)
+        else:
+            preview_base_color = mult(elapsed_color, remaining_color, 0.65)
+            preview_shade_color = shade(elapsed_color, 0.2)
 
         # Paint the background
         cr.set_source_rgba(*list(bg_color))
@@ -500,8 +511,8 @@ class WaveformScale(Gtk.EventBox):
 
         if not self._placeholder and self._rms_vals:
             self.draw_waveform(cr, width, height, elapsed_color,
-                               hover_color, remaining_color,
-                               show_current_pos_config)
+                               preview_base_color, preview_shade_color,
+                               remaining_color)
         else:
             self.draw_placeholder(cr, width, height, remaining_color)
 
@@ -539,9 +550,8 @@ class Config(object):
     _config = PluginConfig(__name__)
 
     elapsed_color = ConfProp(_config, "elapsed_color", "")
-    hover_color = ConfProp(_config, "hover_color", "")
+    preview_color = ConfProp(_config, "preview_color", "")
     remaining_color = ConfProp(_config, "remaining_color", "")
-    show_current_pos = BoolConfProp(_config, "show_current_pos", False)
     max_data_points = IntConfProp(_config, "max_data_points", 3000)
 
 CONFIG = Config()
@@ -586,18 +596,16 @@ class WaveformSeekBarPlugin(EventPlugin):
 
             CONFIG.elapsed_color = entry.get_text()
 
-        def hover_color_changed(entry):
+        def preview_color_changed(entry):
             validate_color(entry)
 
-            CONFIG.hover_color = entry.get_text()
+            CONFIG.preview_color = entry.get_text()
 
         def remaining_color_changed(entry):
             validate_color(entry)
 
             CONFIG.remaining_color = entry.get_text()
 
-        def on_show_pos_toggled(button, *args):
-            CONFIG.show_current_pos = button.get_active()
         vbox = Gtk.VBox(spacing=6)
 
         def create_color(label_text, color, callback):
@@ -616,17 +624,12 @@ class WaveformSeekBarPlugin(EventPlugin):
                            CONFIG.elapsed_color, elapsed_color_changed)
         vbox.pack_start(box, True, True, 0)
 
-        box = create_color(_("Override hover color:"), CONFIG.hover_color,
-                           hover_color_changed)
+        box = create_color(_("Override preview color:"), CONFIG.preview_color,
+                           preview_color_changed)
         vbox.pack_start(box, True, True, 0)
 
         box = create_color(_("Override remaining color:"),
                            CONFIG.remaining_color, remaining_color_changed)
         vbox.pack_start(box, True, True, 0)
-
-        show_current_pos = Gtk.CheckButton(label=_("Show current position"))
-        show_current_pos.set_active(CONFIG.show_current_pos)
-        show_current_pos.connect("toggled", on_show_pos_toggled)
-        vbox.pack_start(show_current_pos, True, True, 0)
 
         return vbox
