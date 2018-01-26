@@ -33,6 +33,9 @@ class Version(tuple):
         inst.message = kwargs.pop("message", "")
         return inst
 
+    def __init__(self, *args, **kwargs):
+        pass
+
     def human_version(self):
         return ".".join(map(str, self))
 
@@ -182,6 +185,7 @@ Muges@github
 Meriipu@github
 Jonas Platte
 Eyenseo@github
+Peter Simonyi
 """.strip().split("\n"))
 
 TRANSLATORS = sorted(u"""

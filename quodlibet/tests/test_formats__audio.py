@@ -751,6 +751,12 @@ class TAudioFile(TestCase):
             f(bar_1_2)
             f(bar_2_1)
 
+    def test_sort_func_custom_numeric(self):
+        func = AudioFile.sort_by_func("~#year")
+
+        files = [AudioFile({"year": "nope"}), AudioFile({"date": "2038"})]
+        assert sorted(files, key=func) == files
+
     def test_uri(self):
         # On windows where we have unicode paths (windows encoding is utf-16)
         # we need to encode to utf-8 first, then escape.
@@ -847,6 +853,12 @@ class Treplay_gain(TestCase):
                         "replaygain_track_peak": "0.9"}
         self.song = AudioFile(self.rg_data)
         self.no_rg_song = AudioFile()
+
+    def test_large(self):
+        rg_data = {"replaygain_track_gain": "9999999 dB"}
+        song = AudioFile(rg_data)
+        assert song.replay_gain(["track"], 0, 0) == 1.0
+        assert song.replay_gain([], 0, 99999999999) == 1.0
 
     def test_no_rg_song(self):
         scale = self.no_rg_song.replay_gain(["track"], 0, -6.0)

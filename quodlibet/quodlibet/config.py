@@ -15,7 +15,7 @@ from quodlibet.util import enum
 from . import const
 from quodlibet.util.config import Config, Error
 from quodlibet.util import print_d, print_w
-from quodlibet.util import is_osx
+from quodlibet.util import is_osx, is_windows
 from quodlibet.compat import PY2, iteritems, text_type
 from gi.repository import Pango
 
@@ -226,12 +226,13 @@ INITIAL = {
         # the format of the timestamps in DateColumn
         "datecolumn_timestamp_format": "",
 
-        # scrollbar does not fade out when inactive
-        "scrollbar_always_visible": "true" if is_osx() else "false",
-
         # the EllipsizeMode to use for SongColumn filepaths, defined in enum
         # (above as of writing); BEGINNING, MIDDLE, END, NONE
         "ellipsizing_mode": "MIDDLE",
+
+        # scrollbar does not fade out when inactive
+        "scrollbar_always_visible":
+            "true" if (is_osx() or is_windows()) else "false",
     },
 
     "rename": {

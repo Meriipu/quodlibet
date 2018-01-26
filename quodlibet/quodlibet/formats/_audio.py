@@ -166,7 +166,7 @@ class AudioFile(dict, ImageContainer):
         elif tag in FILESYSTEM_TAGS:
             return lambda song: fsn2text(song(tag))
         elif tag.startswith("~#") and "~" not in tag[2:]:
-            return lambda song: song(tag)
+            return lambda song: song(tag, 0)
         return lambda song: human(song(tag))
 
     def __getstate__(self):
@@ -940,14 +940,22 @@ class AudioFile(dict, ImageContainer):
                 continue
             else:
                 db += pre_amp_gain
-                scale = 10. ** (db / 20)
-                if scale * peak > 1:
-                    scale = 1.0 / peak  # don't clip
+                try:
+                    scale = 10. ** (db / 20)
+                except OverflowError:
+                    scale = 1.0 / peak
+                else:
+                    if scale * peak > 1:
+                        scale = 1.0 / peak  # don't clip
                 return min(15, scale)
         else:
-            scale = 10. ** ((fallback_gain + pre_amp_gain) / 20)
-            if scale > 1:
-                scale = 1.0  # don't clip
+            try:
+                scale = 10. ** ((fallback_gain + pre_amp_gain) / 20)
+            except OverflowError:
+                scale = 1.0
+            else:
+                if scale > 1:
+                    scale = 1.0  # don't clip
             return min(15, scale)
 
     def write(self):
