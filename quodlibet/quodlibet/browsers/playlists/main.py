@@ -39,7 +39,7 @@ from quodlibet.util.urllib import urlopen
 
 from .util import parse_m3u, parse_pls, PLAYLISTS,\
     ConfirmRemovePlaylistDialog, _name_for,\
-    confirm_playlist_song_removal
+    confirm_playlist_song_removal, ConfirmPlaylistDND
 
 DND_QL, DND_URI_LIST, DND_MOZ_URL = range(3)
 
@@ -427,12 +427,20 @@ class PlaylistsBrowser(Browser, DisplayPatternMixin):
 
     def _drag_data_get(self, view, ctx, sel, tid, etime):
         model, iters = self.__view.get_selection().get_selected_rows()
+
+        source_playlist = self.__get_name_of_current_selected_playlist()
+        target_playlist = _("target_playlist")
+        #print('adding', source_playlist, '-->', target_playlist)
+
         songs = []
         for itr in iters:
             if itr:
                 songs += model[itr][0].songs
+
         if tid == 0:
-            qltk.selection_set_songs(sel, songs)
+            prompt = ConfirmPlaylistDND(self, source_playlist, target_playlist)
+            if prompt.run():
+                qltk.selection_set_songs(sel, songs)
         else:
             sel.set_uris([song("~uri") for song in songs])
 
