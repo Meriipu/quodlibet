@@ -263,7 +263,7 @@ class TPlaylistsBrowser(TSearchBar):
 
     def test_drag_data_get(self):
         # Temporarily replace code that creates a prompt for the user
-        # to avoid test getting stuck, here with a declining function.
+        # to avoid test getting stuck.
         tmp_confirmal = util.ConfirmPlaylistDND.run
         util.ConfirmPlaylistDND.run = lambda _self: True
 
