@@ -16,6 +16,7 @@ from quodlibet import ngettext, _, print_d
 from quodlibet import formats, qltk
 from quodlibet.compat import listfilter
 from quodlibet.qltk import Icons
+from quodlibet.qltk.msg import ConfirmationPrompt
 from quodlibet.qltk.getstring import GetStringDialog
 from quodlibet.qltk.wlw import WaitLoadWindow
 from quodlibet.util import escape
@@ -44,6 +45,18 @@ class ConfirmRemovePlaylistDialog(qltk.Message):
         self.add_button(_("_Cancel"), Gtk.ResponseType.CANCEL)
         self.add_icon_button(_("_Delete"), Icons.EDIT_DELETE,
                              Gtk.ResponseType.YES)
+
+
+class ConfirmPlaylistDND(object):
+    def __init__(self, parent, source_playlist, target_playlist):
+        title = _('Add the songs from playlist "{A}" to playlist "{B}"?'
+            ).format(A=source_playlist, B=target_playlist)
+        description = ""
+        ok_text = _("_Add Songs")
+        self.runner = ConfirmationPrompt(parent, title, description, ok_text)
+
+    def run(self):
+        return self.runner.run() == ConfirmationPrompt.RESPONSE_INVOKE
 
 
 class GetPlaylistName(GetStringDialog):
