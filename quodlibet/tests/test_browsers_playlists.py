@@ -22,7 +22,7 @@ from .helper import dummy_path, __, temp_filename
 import os
 import shutil
 
-from quodlibet.browsers.playlists import PlaylistsBrowser
+from quodlibet.browsers.playlists import PlaylistsBrowser, util
 from quodlibet.library import SongFileLibrary
 import quodlibet.config
 from quodlibet.formats import AudioFile
@@ -262,12 +262,20 @@ class TPlaylistsBrowser(TSearchBar):
         self.failUnless("<~name>" in pattern_text)
 
     def test_drag_data_get(self):
+        # Temporarily replace code that creates a prompt for the user
+        # to avoid test getting stuck, here with a declining function.
+        tmp_confirmal = util.ConfirmPlaylistDND.run
+        util.ConfirmPlaylistDND.run = lambda _self: True
+
         b = self.bar
         song = AudioFile()
         song["~filename"] = fsnative(u"foo")
         sel = MockSelData()
         qltk.selection_set_songs(sel, [song])
         b._drag_data_get(None, None, sel, DND_QL, None)
+
+        # add back old behaviour for good measure
+        util.ConfirmPlaylistDND.run = tmp_confirmal
 
     def test_deletion(self):
         def a_delete_event():

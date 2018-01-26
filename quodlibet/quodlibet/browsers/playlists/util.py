@@ -47,13 +47,16 @@ class ConfirmRemovePlaylistDialog(qltk.Message):
                              Gtk.ResponseType.YES)
 
 
-def confirm_playlist_dnd(parent, source_playlist, target_playlist):
-    title = _('Add the songs from playlist "%s" to playlist "%s"?') % \
-        (source_playlist, target_playlist)
-    description = ""
-    ok_text = _("_Add Songs")
-    prompt = ConfirmationPrompt(parent, title, description, ok_text).run()
-    return prompt == ConfirmationPrompt.RESPONSE_INVOKE
+class ConfirmPlaylistDND(object):
+    def __init__(self, parent, source_playlist, target_playlist):
+        title = _('Add the songs from playlist "{A}" to playlist "{B}"?'
+            ).format(A=source_playlist, B=target_playlist)
+        description = ""
+        ok_text = _("_Add Songs")
+        self.runner = ConfirmationPrompt(parent, title, description, ok_text)
+
+    def run(self):
+        return self.runner.run() == ConfirmationPrompt.RESPONSE_INVOKE
 
 
 class GetPlaylistName(GetStringDialog):
