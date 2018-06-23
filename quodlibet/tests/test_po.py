@@ -10,6 +10,7 @@ from tests.helper import ListWithUnused as L
 import os
 import re
 
+import pytest
 try:
     import polib
 except ImportError:
@@ -17,12 +18,20 @@ except ImportError:
 
 import quodlibet
 from quodlibet.util import get_module_dir
-from quodlibet.util.path import iscommand
 from quodlibet.util.string.titlecase import human_title
 from gdist import gettextutil
 
 
-PODIR = os.path.join(os.path.dirname(get_module_dir(quodlibet)), "po")
+QL_BASE_DIR = os.path.dirname(get_module_dir(quodlibet))
+PODIR = os.path.join(QL_BASE_DIR, "po")
+
+
+def has_gettext_util():
+    try:
+        gettextutil.check_version()
+    except gettextutil.GettextError:
+        return False
+    return True
 
 
 class MissingTranslationsException(Exception):
@@ -32,7 +41,21 @@ class MissingTranslationsException(Exception):
         super(MissingTranslationsException, self).__init__(msg)
 
 
+@pytest.mark.skipif(not has_gettext_util(), reason="no gettext")
+def test_potfile_format():
+    with gettextutil.create_pot(PODIR, "quodlibet"):
+        gettextutil.check_pot(PODIR, "quodlibet")
+
+
 class TPOTFILESIN(TestCase):
+
+    def test_no_extra_entries(self):
+        """Works without polib installed..."""
+        with open(os.path.join(PODIR, "POTFILES.in")) as f:
+            for fn in f:
+                path = os.path.join(QL_BASE_DIR, fn.strip())
+                assert os.path.isfile(path), \
+                    "Can't read '%s' from POTFILES.in" % path
 
     def test_missing(self):
         try:
@@ -228,16 +251,12 @@ class TPot(TestCase):
 class POMixin(object):
 
     def test_pos(self):
-        if not iscommand("msgfmt"):
+        try:
+            gettextutil.check_version()
+        except gettextutil.GettextError:
             return
 
-        po_path = os.path.join(PODIR, "%s.po" % self.lang)
-        self.failIf(os.system(
-            "msgfmt -c -o /dev/null %s > /dev/null" % po_path))
-        try:
-            os.unlink("messages.mo")
-        except OSError:
-            pass
+        gettextutil.check_po(PODIR, self.lang)
 
     def test_gtranslator_blows_goats(self):
         for line in open(os.path.join(PODIR, "%s.po" % self.lang), "rb"):

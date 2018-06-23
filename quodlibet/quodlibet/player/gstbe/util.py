@@ -82,7 +82,6 @@ def find_audio_sink():
     if is_windows():
         sinks = [
             "directsoundsink",
-            "autoaudiosink",
         ]
     elif is_linux() and pulse_is_running():
         sinks = [
@@ -182,7 +181,7 @@ def parse_gstreamer_taglist(tags):
     merged = {}
     for key in tags.keys():
         value = tags[key]
-        # extended-comment sometimes containes a single vorbiscomment or
+        # extended-comment sometimes contains a single vorbiscomment or
         # a list of them ["key=value", "key=value"]
         if key == "extended-comment":
             if not isinstance(value, list):

@@ -127,7 +127,7 @@ class TMPRIS(PluginTestCase):
             "CanSetFullscreen": dbus.Boolean(False),
             "HasTrackList": dbus.Boolean(False),
             "Identity": dbus.String("Quod Libet"),
-            "DesktopEntry": dbus.String("quodlibet"),
+            "DesktopEntry": dbus.String("io.github.quodlibet.QuodLibet"),
             "SupportedUriSchemes": dbus.Array(),
         }
 
@@ -184,6 +184,7 @@ class TMPRIS(PluginTestCase):
         # go to next song
         self._player_iface().Next(**args)
         self._wait()
+        self.m.plugin_on_song_started(app.player.info)
 
         self._prop().Get(piface, "Metadata", **args)
         resp = self._wait()[0]
@@ -226,6 +227,7 @@ class TMPRIS(PluginTestCase):
         # go to next song with invalid utf-8
         self._player_iface().Next(**args)
         self._wait()
+        self.m.plugin_on_song_started(app.player.info)
 
         self._prop().Get(piface, "Metadata", **args)
         resp = self._wait()[0]

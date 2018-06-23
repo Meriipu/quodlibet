@@ -29,6 +29,7 @@ from quodlibet.player import PlayerError
 from quodlibet.player._base import BasePlayer
 from quodlibet.qltk.notif import Task
 from quodlibet.compat import iteritems
+from quodlibet.formats.mod import ModFile
 
 from .util import (parse_gstreamer_taglist, TagListWrapper, iter_to_list,
     GStreamerSink, link_many, bin_debug)
@@ -153,7 +154,13 @@ class BufferingWrapper(object):
 
 
 def sink_has_external_state(sink):
-    return sink.get_factory().get_name() == "pulsesink"
+    sink_name = sink.get_factory().get_name()
+
+    if sink_name == "wasapisink":
+        # https://bugzilla.gnome.org/show_bug.cgi?id=796386
+        return hasattr(sink.props, "volume")
+    else:
+        return sink_name == "pulsesink"
 
 
 def sink_state_is_valid(sink):
@@ -516,29 +523,6 @@ class GStreamerPlayer(BasePlayer, GStreamerPluginHandler):
         flags &= ~(GST_PLAY_FLAG_VIDEO | GST_PLAY_FLAG_TEXT)
         self.bin.set_property("flags", flags)
 
-        # find the (uri)decodebin after setup and use autoplug-sort
-        # to sort elements like decoders
-        def source_setup(*args):
-            def autoplug_sort(decode, pad, caps, factories):
-                def set_prio(x):
-                    i, f = x
-                    i = {
-                        "mad": -1,
-                        "mpg123audiodec": -2
-                    }.get(f.get_name(), i)
-                    return (i, f)
-                return list(
-                    zip(*sorted(map(set_prio, enumerate(factories)))))[1]
-
-            for e in iter_to_list(self.bin.iterate_recurse):
-                try:
-                    e.connect("autoplug-sort", autoplug_sort)
-                except TypeError:
-                    pass
-                else:
-                    break
-        self.bin.connect("source-setup", source_setup)
-
         if not self.has_external_volume:
             # Restore volume/ReplayGain and mute state
             self.volume = self._volume
@@ -715,6 +699,11 @@ class GStreamerPlayer(BasePlayer, GStreamerPluginHandler):
         # https://bugzilla.gnome.org/show_bug.cgi?id=695474
         if self.song.multisong:
             print_d("multisong: ignore about to finish")
+            return
+
+        # mod + gapless deadlocks
+        # https://github.com/quodlibet/quodlibet/issues/2780
+        if isinstance(self.song, ModFile):
             return
 
         if config.getboolean("player", "gst_disable_gapless"):

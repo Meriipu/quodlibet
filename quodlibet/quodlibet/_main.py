@@ -16,7 +16,7 @@ from quodlibet import const
 from quodlibet import build
 from quodlibet.util import cached_func, windows, set_process_title, is_osx
 from quodlibet.util.dprint import print_d
-from quodlibet.util.path import mkdir, xdg_get_config_home
+from quodlibet.util.path import mkdir, xdg_get_config_home, xdg_get_cache_home
 
 
 PLUGIN_DIRS = ["editing", "events", "playorder", "songsmenu", "playlist",
@@ -118,6 +118,20 @@ def get_image_dir():
     """The path to the image directory in the quodlibet package"""
 
     return os.path.join(get_base_dir(), "images")
+
+
+@cached_func
+def get_cache_dir():
+    """The directory to store things into which can be deleted at any time"""
+
+    if os.name == "nt" and build.BUILD_TYPE == u"windows-portable":
+        # avoid writing things to the host system for the portable build
+        path = os.path.join(get_user_dir(), "cache")
+    else:
+        path = os.path.join(xdg_get_cache_home(), "quodlibet")
+
+    mkdir(path, 0o700)
+    return path
 
 
 @cached_func
@@ -337,12 +351,14 @@ def run(window, before_quit=None):
 
     from quodlibet.errorreport import faulthandling
 
-    try:
-        faulthandling.enable(os.path.join(get_user_dir(), "faultdump"))
-    except IOError:
-        util.print_exc()
-    else:
-        GLib.idle_add(faulthandling.raise_and_clear_error)
+    # gtk+ on osx is just too crashy
+    if not is_osx():
+        try:
+            faulthandling.enable(os.path.join(get_user_dir(), "faultdump"))
+        except IOError:
+            util.print_exc()
+        else:
+            GLib.idle_add(faulthandling.raise_and_clear_error)
 
     # set QUODLIBET_START_PERF to measure startup time until the
     # windows is first shown.

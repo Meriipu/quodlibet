@@ -48,7 +48,7 @@ class TextEditBox(Gtk.HBox):
     and an apply button. The 'buffer' attribute is the text buffer, the
     'apply' attribute is the apply button.
 
-    FIXME: Button text should changable (without poking the buttons directly).
+    FIXME: Button text should changeable (without poking the buttons directly).
     """
 
     def __init__(self, default=""):
@@ -86,7 +86,7 @@ def validate_markup_pattern(text, alternative_markup=True, links=False):
 
     Args:
         text (unicode): the pattern
-        alternative_markup (bool): if "[b]" gets mapped to "\<b\>"
+        alternative_markup (bool): if "[b]" gets mapped to "\\<b\\>"
         links (bool): if link tags are allowed (for Gtk.Label only)
 
     Raises:

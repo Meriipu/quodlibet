@@ -70,18 +70,18 @@ class TAPEv2FileMixin(object):
         self.failUnlessEqual(self.s.get("foo"), None)
         self.s.write()
         m = mutagen.apev2.APEv2(self.f)
-        self.failUnlessEqual("foo" in m, True)
+        self.failUnless("foo" in m)
 
     def test_titlecase(self):
         self.s["isRc"] = "1234"
         self.s["fOoBaR"] = "5678"
         self.s.write()
         self.s.reload()
-        self.failUnlessEqual("isrc" in self.s, True)
-        self.failUnlessEqual("foobar" in self.s, True)
+        self.failUnless("isrc" in self.s)
+        self.failUnless("foobar" in self.s)
         m = mutagen.apev2.APEv2(self.f)
-        self.failUnlessEqual("ISRC" in m, True)
-        self.failUnlessEqual("Foobar" in m, True)
+        self.failUnless("ISRC" in m)
+        self.failUnless("Foobar" in m)
 
     def test_disc_mapping(self):
         m = mutagen.apev2.APEv2(self.f)
@@ -134,6 +134,23 @@ class TMAFile(TestCase, TAPEv2FileMixin):
 
     def test_channels(self):
         assert self.s("~#channels") == 2
+
+    def test_samplerate(self):
+        assert self.s("~#samplerate") == 44100
+
+    def test_bitdepth(self):
+        assert self.s("~#bitdepth") == 16
+
+
+def test_ma_file_old():
+    s = MonkeysAudioFile(get_data_path('mac-396.ape'))
+
+    assert s("~format") == "Monkey's Audio"
+    assert s("~codec") == "Monkey's Audio"
+    assert s("~encoding") == ""
+    assert s("~#channels") == 2
+    assert s("~#samplerate") == 44100
+    assert s("~#bitdepth", 0) == 0
 
 
 class TWavpackFileAPEv2(TestCase, TAPEv2FileMixin):

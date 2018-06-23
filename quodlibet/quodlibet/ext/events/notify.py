@@ -365,9 +365,9 @@ class Notify(EventPlugin):
             self.__disconnect()
             return False
 
-        strip_markup = lambda t: re.subn("\</?[iub]\>", "", t)[0]
-        strip_links = lambda t: re.subn("\</?a.*?\>", "", t)[0]
-        strip_images = lambda t: re.subn("\<img.*?\>", "", t)[0]
+        strip_markup = lambda t: re.subn(r"\</?[iub]\>", "", t)[0]
+        strip_links = lambda t: re.subn(r"\</?a.*?\>", "", t)[0]
+        strip_images = lambda t: re.subn(r"\<img.*?\>", "", t)[0]
 
         title = XMLFromPattern(pconfig.gettext("titlepattern")) % song
         title = unescape(strip_markup(strip_links(strip_images(title))))
@@ -388,7 +388,7 @@ class Notify(EventPlugin):
             actions = ["next", _("Next")]
 
         hints = {
-            "desktop-entry": "quodlibet",
+            "desktop-entry": "io.github.quodlibet.QuodLibet",
         }
 
         image_uri = self._get_image_uri(song)

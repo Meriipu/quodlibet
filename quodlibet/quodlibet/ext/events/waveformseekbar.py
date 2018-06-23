@@ -77,20 +77,25 @@ class WaveformSeekBar(Gtk.Box):
         # Close any existing pipeline to avoid leaks
         self._clean_pipeline()
 
+        if not song.is_file:
+            return
+
         command_template = """
-        filesrc name=fs
-        ! decodebin ! audioconvert
+        uridecodebin name=uridec
+        ! audioconvert
         ! level name=audiolevel interval={} post-messages=true
         ! fakesink sync=false"""
         interval = int(song("~#length") * 1E9 / points)
+        if not interval:
+            return
         print_d("Computing data for each %.3f seconds" % (interval / 1E9))
 
         command = command_template.format(interval)
         pipeline = Gst.parse_launch(command)
-        pipeline.get_by_name("fs").set_property("location", song("~filename"))
+        pipeline.get_by_name("uridec").set_property("uri", song("~uri"))
 
         bus = pipeline.get_bus()
-        self._bus_id = bus.connect("message", self._on_bus_message)
+        self._bus_id = bus.connect("message", self._on_bus_message, points)
         bus.add_signal_watch()
 
         pipeline.set_state(Gst.State.PLAYING)
@@ -98,7 +103,8 @@ class WaveformSeekBar(Gtk.Box):
         self._pipeline = pipeline
         self._new_rms_vals = []
 
-    def _on_bus_message(self, bus, message):
+    def _on_bus_message(self, bus, message, points):
+        force_stop = False
         if message.type == Gst.MessageType.ERROR:
             error, debug = message.parse_error()
             print_d("Error received from element {name}: {error}".format(
@@ -114,10 +120,16 @@ class WaveformSeekBar(Gtk.Box):
                     # Normalize dB value to value between 0 and 1
                     rms = pow(10, (rms_db_avg / 20))
                     self._new_rms_vals.append(rms)
+                    if len(self._new_rms_vals) >= points:
+                        # The audio might be much longer than we anticipated
+                        # and we would get way too many events due to the too
+                        # short interval set.
+                        force_stop = True
             else:
                 print_w("Got unexpected message of type {}"
                         .format(message.type))
-        elif message.type == Gst.MessageType.EOS:
+
+        if message.type == Gst.MessageType.EOS or force_stop:
             self._clean_pipeline()
 
             # Update the waveform with the new data
@@ -166,10 +178,6 @@ class WaveformSeekBar(Gtk.Box):
     def _on_song_changed(self, library, songs, player):
         if not player.info:
             return
-        if not player.info.is_file:
-            print_d("%s is not a local file, skipping waveform calculation."
-                    % player.info("~filename"))
-            return
         # Check that the currently playing song has changed
         if player.info in songs:
             # Trigger a re-computation of the waveform
@@ -179,7 +187,7 @@ class WaveformSeekBar(Gtk.Box):
             self._update_label(player)
 
     def _on_song_started(self, player, song):
-        if player.info and player.info.is_file:
+        if player.info:
             # Trigger a re-computation of the waveform
             self._create_waveform(player.info, CONFIG.max_data_points)
             self._resize_labels(player.info)

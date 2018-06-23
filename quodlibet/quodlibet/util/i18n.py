@@ -13,7 +13,7 @@ import locale
 
 from senf import environ, path2fsn, fsn2text, text2fsn
 
-from quodlibet.util.path import unexpand
+from quodlibet.util.path import unexpand, xdg_get_system_data_dirs
 from quodlibet.util.dprint import print_d
 from quodlibet.compat import text_type, PY2, listfilter
 
@@ -223,13 +223,28 @@ def set_debug_text(debug_text=None):
         trans.set_debug_text(debug_text)
 
 
+def iter_locale_dirs():
+    dirs = list(xdg_get_system_data_dirs())
+    # this is the one python gettext uses by default, use as a fallback
+    dirs.append(os.path.join(sys.base_prefix, "share"))
+
+    done = set()
+    for path in dirs:
+        locale_dir = os.path.join(path, "locale")
+        if locale_dir in done:
+            continue
+        done.add(locale_dir)
+        if os.path.isdir(locale_dir):
+            yield locale_dir
+
+
 def register_translation(domain, localedir=None):
     """Register a translation domain
 
     Args:
         domain (str): the gettext domain
-        localedir (pathlike): A directory used for translations, if it doesn't
-            exist the system one will be used.
+        localedir (pathlike): A directory used for translations, if None the
+            system one will be used.
     Returns:
         GlibTranslations
     """
@@ -238,19 +253,22 @@ def register_translation(domain, localedir=None):
 
     assert _initialized
 
-    if localedir is not None and os.path.isdir(localedir):
-        print_d("Using local localedir: %r" % unexpand(localedir))
-        gettext.bindtextdomain(domain, localedir)
-
-    localedir = gettext.bindtextdomain(domain)
-
-    try:
-        t = gettext.translation(domain, localedir, class_=GlibTranslations)
-    except IOError:
-        print_d("No translation found in %r" % unexpand(localedir))
-        t = GlibTranslations()
+    if localedir is None:
+        iterdirs = iter_locale_dirs
     else:
-        print_d("Translations loaded: %r" % unexpand(t.path))
+        iterdirs = lambda: iter([localedir])
+
+    for dir_ in iterdirs():
+        try:
+            t = gettext.translation(domain, dir_, class_=GlibTranslations)
+        except OSError:
+            continue
+        else:
+            print_d("Translations loaded: %r" % unexpand(t.path))
+            break
+    else:
+        print_d("No translation found for the domain %r" % domain)
+        t = GlibTranslations()
 
     t.set_debug_text(_debug_text)
     _translations[domain] = t
@@ -292,29 +310,28 @@ def init(language=None):
 
 
 def get_available_languages(domain):
-    """Returns a list of available translations for a given gettext domain.
+    """Returns a set of available translations for a given gettext domain.
 
     Args:
         domain (str)
     Returns:
-        List[text_type]
+        Set[text_type]
     """
 
-    locale_dir = gettext.bindtextdomain(domain)
-    if locale_dir is None:
-        return []
+    langs = set(["C"])
 
-    try:
-        entries = os.listdir(locale_dir)
-    except OSError:
-        return []
+    for locale_dir in iter_locale_dirs():
+        try:
+            entries = os.listdir(locale_dir)
+        except OSError:
+            continue
 
-    langs = [u"C"]
-    for lang in entries:
-        mo_path = os.path.join(
-            locale_dir, lang, "LC_MESSAGES", "%s.mo" % domain)
-        if os.path.exists(mo_path):
-            langs.append(fsn2text(path2fsn(lang)))
+        for lang in entries:
+            mo_path = os.path.join(
+                locale_dir, lang, "LC_MESSAGES", "%s.mo" % domain)
+            if os.path.exists(mo_path):
+                langs.add(fsn2text(path2fsn(lang)))
+
     return langs
 
 

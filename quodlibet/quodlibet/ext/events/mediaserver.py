@@ -445,7 +445,7 @@ class SongObject(MediaItem, MediaObject, DBusProperty, DBusIntrospectable,
             if song_id not in self.__map:
                 continue
             for user in self.__users:
-                # ask the user for the prefix whith which the song is used
+                # ask the user for the prefix with which the song is used
                 prefix = user.get_prefix(song)
                 path = "/" + prefix + "/" + song_id
                 self.emit_properties_changed(MediaItem.IFACE, props, path)
@@ -623,7 +623,7 @@ class Icon(MediaItem, MediaObject, DBusProperty, DBusIntrospectable,
 
         # load into a pixbuf
         theme = Gtk.IconTheme.get_default()
-        pixbuf = theme.load_icon("quodlibet", Icon.SIZE, 0)
+        pixbuf = theme.load_icon(Icons.QUODLIBET, Icon.SIZE, 0)
 
         # make sure the size is right
         pixbuf = pixbuf.scale_simple(Icon.SIZE, Icon.SIZE,
@@ -643,7 +643,7 @@ class Icon(MediaItem, MediaObject, DBusProperty, DBusIntrospectable,
             elif name == "Path":
                 return Icon.PATH
             elif name == "DisplayName":
-                return "I'm an icon \o/"
+                return r"I'm an icon \o/"
         elif interface == MediaItem.IFACE:
             if name == "URLs":
                 return [fsn2uri(self.__f.name)]

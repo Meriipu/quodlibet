@@ -50,7 +50,7 @@ class FaultHandlerCrash(Exception):
 
         # Extract the basename and the function name for each line and hash
         # them. Could be smarter, but let's try this for now..
-        reg = re.compile('.*?"([^"]+).*?(\w+$)')
+        reg = re.compile(r'.*?"([^"]+).*?(\w+$)')
         values = []
         for l in stacktrace.splitlines():
             m = reg.match(l)
@@ -115,7 +115,7 @@ def _at_exit():
 
 def raise_and_clear_error():
     """Raises an error if there is one. Calling this will clear the error
-    so a second call wont do anything.
+    so a second call won't do anything.
 
     enable() needs to be called first.
 

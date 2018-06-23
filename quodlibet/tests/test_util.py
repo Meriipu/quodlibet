@@ -13,7 +13,7 @@ import traceback
 import time
 import logging
 
-from senf import getcwd, fsnative, fsn2bytes, bytes2fsn, mkdtemp
+from senf import getcwd, fsnative, fsn2bytes, bytes2fsn, mkdtemp, environ
 
 from quodlibet import _
 from quodlibet.compat import text_type
@@ -28,7 +28,7 @@ from quodlibet.util import re_escape
 from quodlibet.util.library import set_scan_dirs, get_scan_dirs
 from quodlibet.util.path import fsn2glib, glib2fsn, \
     parse_xdg_user_dirs, xdg_get_system_data_dirs, escape_filename, \
-    strip_win32_incompat_from_path, xdg_get_cache_home, environ, \
+    strip_win32_incompat_from_path, xdg_get_cache_home, \
     xdg_get_data_home, unexpand, expanduser, xdg_get_user_dirs, \
     xdg_get_config_home, get_temp_cover_file, mkdir, mtime
 from quodlibet.util.string import decode, encode, split_escape, join_escape
@@ -289,7 +289,7 @@ class Thuman_sort(TestCase):
         self.failUnlessEqual(
             util.human_sort_key(u"  3foo    bar6 42.8"),
             util.human_sort_key(u"3 foo bar6  42.8  "))
-        self.failUnlessEqual(64.0 in util.human_sort_key(u"64. 8"), True)
+        self.failUnless(64.0 in util.human_sort_key(u"64. 8"))
 
 
 class Tformat_time(TestCase):
@@ -489,7 +489,7 @@ class Tpattern(TestCase):
                              "Year - Album")
 
     def test_escape(self):
-        self.failUnlessEqual(util.pattern("\<i\><&>\</i\>", esc=True),
+        self.failUnlessEqual(util.pattern(r"\<i\><&>\</i\>", esc=True),
                             "<i>&amp;</i>")
 
     def test_invalid(self):
@@ -497,7 +497,7 @@ class Tpattern(TestCase):
         util.pattern("<d\\")
 
     def test_complex_condition(self):
-        self.assertEqual(util.pattern("<#(bitrate \> 150)|HQ|LQ>"), "LQ")
+        self.assertEqual(util.pattern(r"<#(bitrate \> 150)|HQ|LQ>"), "LQ")
 
     def test_escape_condition(self):
         self.assertEqual(
@@ -1088,7 +1088,7 @@ class Treraise(TestCase):
 class Tenviron(TestCase):
 
     def test_main(self):
-        for v in util.environ.values():
+        for v in environ.values():
             if os.name == "nt":
                 self.assertTrue(isinstance(v, text_type))
             else:

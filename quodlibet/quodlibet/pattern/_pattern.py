@@ -177,7 +177,7 @@ class PatternParser(object):
             if self.lookahead.type in tokens:
                 self.lookahead = next(self.tokens)
             else:
-                raise ParseError("The token '%s' is not the type exected." % (
+                raise ParseError("The token '%s' is not the type expected." % (
                     self.lookahead.lexeme))
         except StopIteration:
             self.lookahead = PatternLexeme(EOF, "")
@@ -484,10 +484,10 @@ class _XMLFromMarkupPattern(_XMLFromPattern):
 
 
 def XMLFromMarkupPattern(string):
-    """Like XMLFromPattern but allows using [] instead of \<\> for
+    """Like XMLFromPattern but allows using [] instead of \\<\\> for
     pango markup to get rid of all the escaping in the common case.
 
-    To get text like "[b]" escape the first '[' like "\[b]"
+    To get text like "[b]" escape the first '[' like "\\[b]"
     """
 
     return Pattern(string, _XMLFromMarkupPattern)

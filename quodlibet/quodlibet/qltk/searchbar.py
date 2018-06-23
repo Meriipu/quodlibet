@@ -19,6 +19,7 @@ from quodlibet.query import Query
 from quodlibet.qltk.cbes import ComboBoxEntrySave
 from quodlibet.qltk.ccb import ConfigCheckMenuItem
 from quodlibet.qltk.x import SeparatorMenuItem
+from quodlibet.qltk import is_accel
 from quodlibet.util import limit_songs, DeferredSignal
 
 
@@ -71,7 +72,9 @@ class SearchBarBox(Gtk.HBox):
         entry.connect('backspace', self.__text_changed)
         entry.connect('populate-popup', self.__menu)
         entry.connect('activate', self.__filter_changed)
+        entry.connect('activate', self.__save_search)
         entry.connect('focus-out-event', self.__save_search)
+        entry.connect('key-press-event', self.__key_pressed)
 
         entry.set_placeholder_text(_("Search"))
         entry.set_tooltip_text(_("Search your library, "
@@ -151,11 +154,13 @@ class SearchBarBox(Gtk.HBox):
 
     def __save_search(self, entry, *args):
         # only save the query on focus-out if eager_search is turned on
-        if args and not config.getboolean('settings', 'eager_search'):
+        if (len(args) > 0
+                and args[0]
+                and not config.getboolean('settings', 'eager_search')):
             return
 
         text = self.get_text().strip()
-        if text and self._query.is_parsable:
+        if text and self._query and self._query.is_parsable:
             # Adding the active text to the model triggers a changed signal
             # (get_active is no longer -1), so inhibit
             self.__inhibit()
@@ -163,13 +168,19 @@ class SearchBarBox(Gtk.HBox):
             self.__combo.write()
             self.__uninhibit()
 
+    def __key_pressed(self, entry, event):
+        if (is_accel(event, '<Primary>Return') or
+                is_accel(event, '<Primary>KP_Enter')):
+            # Save query on Primary+Return accel, even though the focus is kept
+            self.__save_search(entry)
+        return False
+
     def __filter_changed(self, *args):
         self.__deferred_changed.abort()
         text = self.get_text()
         self._update_query_from(text)
         if self._query.is_parsable:
             GLib.idle_add(self.emit, 'query-changed', text)
-            self.__save_search(args[0:1], args[1:])
 
     def __text_changed(self, *args):
         if not self.__entry.is_sensitive():

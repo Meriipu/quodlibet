@@ -14,6 +14,9 @@ import os
 import sys
 import ctypes
 
+from gi.repository import Gio
+from gi.repository import GLib
+
 
 def _dbus_name_owned(name):
     """Returns True if the dbus name has an owner"""
@@ -22,15 +25,21 @@ def _dbus_name_owned(name):
         return False
 
     try:
-        import dbus
-    except ImportError:
+        dbus = Gio.DBusProxy.new_for_bus_sync(Gio.BusType.SESSION,
+                                              Gio.DBusProxyFlags.NONE, None,
+                                              'org.freedesktop.DBus',
+                                              '/org/freedesktop/DBus',
+                                              'org.freedesktop.DBus',
+                                              None)
+        return dbus.NameHasOwner('(s)', name)
+    except GLib.Error:
         return False
 
-    try:
-        bus = dbus.Bus(dbus.Bus.TYPE_SESSION)
-        return bus.name_has_owner(name)
-    except dbus.DBusException:
-        return False
+
+def is_flatpak():
+    """If we are running in a flatpak"""
+
+    return is_linux() and os.path.exists("/.flatpak-info")
 
 
 def is_plasma():
