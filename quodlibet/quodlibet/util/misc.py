@@ -8,18 +8,20 @@
 
 import os
 import sys
-import locale
 import tempfile
 from functools import wraps
 
-from senf import environ, argv, path2fsn, gettempdir
+from senf import environ, argv, path2fsn
 
 
 from .environment import is_linux
-from .compat import PY3
 
 
 environ, argv
+
+
+def cmp(a, b):
+    return (a > b) - (a < b)
 
 
 def cached_func(f):
@@ -35,29 +37,6 @@ def cached_func(f):
             res.append(f())
         return res[0]
     return wrapper
-
-
-def _verify_encoding(encoding):
-    try:
-        u"".encode(encoding)
-    except LookupError:
-        encoding = "utf-8"
-    return encoding
-
-
-@cached_func
-def get_locale_encoding():
-    """Returns the encoding defined by the locale"""
-
-    try:
-        encoding = locale.getpreferredencoding(False)
-    except locale.Error:
-        encoding = "utf-8"
-    else:
-        # python on macports can return a bugs result (empty string)
-        encoding = _verify_encoding(encoding)
-
-    return encoding
 
 
 def total_ordering(cls):
@@ -127,6 +106,4 @@ def NamedTemporaryFile(*args, **kwargs):
     Py2+Windows
     """
 
-    if not PY3 and kwargs.get("dir", None) is None:
-        kwargs["dir"] = gettempdir()
     return tempfile.NamedTemporaryFile(*args, **kwargs)

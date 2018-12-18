@@ -15,6 +15,8 @@ import ctypes.util
 import sys
 import unicodedata
 import threading
+import locale
+from functools import reduce
 
 # Windows doesn't have fcntl, just don't lock for now
 try:
@@ -25,24 +27,22 @@ except ImportError:
 
 from senf import fsnative, argv
 
-from quodlibet.compat import reraise as py_reraise, text_type, \
-    iteritems, reduce, number_types, long
 from quodlibet.util.string.titlecase import title
 
 from quodlibet.const import SUPPORT_EMAIL, COPYRIGHT
 from quodlibet.util.dprint import print_d, print_, print_e, print_w, print_exc
 from .misc import cached_func, get_module_dir, get_ca_file, \
-    get_locale_encoding, NamedTemporaryFile
+    NamedTemporaryFile, cmp
 from .environment import is_plasma, is_unity, is_enlightenment, \
     is_linux, is_windows, is_wine, is_osx, is_flatpak
 from .enum import enum
-from .i18n import _, C_, locale_format
+from .i18n import _, C_
 
 
 # pyflakes
 cached_func, enum, print_w, print_exc, is_plasma, is_unity, is_enlightenment,
 is_linux, is_windows, is_wine, is_osx, get_module_dir, get_ca_file,
-get_locale_encoding, NamedTemporaryFile, is_flatpak
+NamedTemporaryFile, is_flatpak, cmp
 
 
 class InstanceTracker(object):
@@ -321,14 +321,14 @@ def format_int_locale(value):
     """Turn an integer into a grouped, locale-dependent string
     e.g. 12345 -> "12,345" or "12.345" etc
     """
-    return locale_format("%d", value, grouping=True)
+    return locale.format_string("%d", value, grouping=True)
 
 
 def format_float_locale(value, format="%.2f"):
     """Turn a float into a grouped, locale-dependent string
     e.g. 12345.67 -> "12,345.67" or "12.345,67" etc
     """
-    return locale_format(format, value, grouping=True)
+    return locale.format_string(format, value, grouping=True)
 
 
 def format_rating(value, blank=True):
@@ -354,7 +354,7 @@ def format_size(size):
     Args:
         size (int): size in bytes
     Returns:
-        text_type
+        str
     """
     # TODO: Better i18n of this (eg use O/KO/MO/GO in French)
     if size >= 1024 ** 3:
@@ -481,7 +481,7 @@ def _split_numeric_sortkey(s, limit=10,
 def human_sort_key(s, normalize=unicodedata.normalize):
     if not s:
         return ()
-    if not isinstance(s, text_type):
+    if not isinstance(s, str):
         s = s.decode("utf-8")
     s = normalize("NFD", s.lower())
     return _split_numeric_sortkey(s)
@@ -558,7 +558,7 @@ def pattern(pat, cap=True, esc=False, markup=False):
 
         def __call__(self, tag, *args):
             if tag in FILESYSTEM_TAGS:
-                return fsnative(text_type(tag))
+                return fsnative(str(tag))
             return 0 if '~#' in tag[:2] else self.comma(tag)
 
     fakesong = Fakesong({'filename': tag('filename', cap)})
@@ -778,11 +778,11 @@ def sanitize_tags(tags, stream=False):
     """
 
     san = {}
-    for key, value in iteritems(tags):
+    for key, value in tags.items():
         key = key.lower()
         key = {"location": "website"}.get(key, key)
 
-        if isinstance(value, text_type):
+        if isinstance(value, str):
             lower = value.lower().strip()
 
             if key == "channel-mode":
@@ -803,7 +803,7 @@ def sanitize_tags(tags, stream=False):
 
         if key == "duration":
             try:
-                value = int(long(value) / 1000)
+                value = int(int(value) / 1000)
             except ValueError:
                 pass
             else:
@@ -836,7 +836,7 @@ def sanitize_tags(tags, stream=False):
         if not stream and key in ("title", "album", "artist", "date"):
             continue
 
-        if isinstance(value, number_types):
+        if isinstance(value, (int, float)):
             if not key.startswith("~#"):
                 key = "~#" + key
             san[key] = value
@@ -844,7 +844,7 @@ def sanitize_tags(tags, stream=False):
             if key.startswith("~#"):
                 key = key[2:]
 
-            if not isinstance(value, text_type):
+            if not isinstance(value, str):
                 continue
 
             value = value.strip()
@@ -1146,4 +1146,4 @@ def reraise(tp, value, tb=None):
 
     if tb is None:
         tb = sys.exc_info()[2]
-    py_reraise(tp, value, tb)
+    raise tp(value).with_traceback(tb)

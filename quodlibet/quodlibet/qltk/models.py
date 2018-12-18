@@ -9,12 +9,10 @@
 
 from gi.repository import Gtk, GObject
 
-from quodlibet.compat import integer_types, string_types, cmp
+from quodlibet.util import cmp
 
 
-_auto_types = [float, bool, GObject.Object]
-_auto_types.extend(integer_types)
-_auto_types.extend(string_types)
+_auto_types = [float, bool, GObject.Object, int, str]
 
 
 def _gets_marshaled_to_pyobject(obj, _types=tuple(_auto_types)):
@@ -70,7 +68,7 @@ class _ModelMixin(object):
             iter_ = inext(iter_)
 
     def values(self):
-        """Largely for PY2 -> PY3 compatibility"""
+        """Largely for Py2 -> Py3 compatibility"""
         return list(self.itervalues())
 
     def iterrows(self, iter_=None):
@@ -141,6 +139,8 @@ class ObjectTreeStore(_ModelMixin, Gtk.TreeStore):
             if sibling is None:
                 position = -1
             else:
+                if parent is None:
+                    parent = self.iter_parent(sibling)
                 position = self.get_path(sibling)[-1]
             return self.insert_with_values(parent, position, [0], [value])
 
@@ -153,6 +153,8 @@ class ObjectTreeStore(_ModelMixin, Gtk.TreeStore):
             if sibling is None:
                 position = 0
             else:
+                if parent is None:
+                    parent = self.iter_parent(sibling)
                 position = self.get_path(sibling)[-1] + 1
             return self.insert_with_values(parent, position, [0], [value])
 

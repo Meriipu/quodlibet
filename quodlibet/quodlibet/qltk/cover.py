@@ -27,7 +27,7 @@ class BigCenteredImage(qltk.Window):
 
     This might leak memory, but it could just be Python's GC being dumb."""
 
-    def __init__(self, title, fileobj, parent):
+    def __init__(self, title, fileobj, parent, scale=0.5):
         super(BigCenteredImage, self).__init__(type=Gtk.WindowType.POPUP)
         self.set_type_hint(Gdk.WindowTypeHint.TOOLTIP)
 
@@ -35,36 +35,15 @@ class BigCenteredImage(qltk.Window):
         parent = qltk.get_top_parent(parent)
         self.set_transient_for(parent)
 
-        if qltk.is_wayland():
-            # no screen size with wayland, the parent window is
-            # the next best thing..
-            width, height = parent.get_size()
-            width = int(width / 1.1)
-            height = int(height / 1.1)
-        else:
-            width = int(Gdk.Screen.width() / 1.8)
-            height = int(Gdk.Screen.height() / 1.8)
-
         self.set_position(Gtk.WindowPosition.CENTER_ON_PARENT)
 
-        scale_factor = self.get_scale_factor()
-
-        pixbuf = None
-        try:
-            pixbuf = pixbuf_from_file(fileobj, (width, height), scale_factor)
-        except GLib.GError:
-            pass
-
-        # failed to load, abort
-        if not pixbuf:
+        #If image fails to set, abort construction.
+        if not self.set_image(fileobj, parent, scale):
             self.destroy()
             return
 
-        image = Gtk.Image()
-        image.set_from_surface(get_surface_for_pixbuf(self, pixbuf))
-
         event_box = Gtk.EventBox()
-        event_box.add(image)
+        event_box.add(self.__image)
 
         frame = Gtk.Frame()
         frame.set_shadow_type(Gtk.ShadowType.OUT)
@@ -74,7 +53,57 @@ class BigCenteredImage(qltk.Window):
 
         event_box.connect('button-press-event', self.__destroy)
         event_box.connect('key-press-event', self.__destroy)
+
         self.get_child().show_all()
+
+    def set_image(self, file, parent, scale=0.5):
+        scale_factor = self.get_scale_factor()
+
+        (width, height) = self.__calculate_screen_width(parent, scale)
+
+        pixbuf = None
+        try:
+            pixbuf = pixbuf_from_file(file, (width, height), scale_factor)
+        except GLib.GError:
+            return False
+
+        # failed to load, abort
+        if not pixbuf:
+            return False
+
+        self.__image = Gtk.Image()
+        self.__image.set_from_surface(get_surface_for_pixbuf(self, pixbuf))
+
+        return True
+
+    def __calculate_screen_width(self, parent, scale=0.5):
+        if qltk.is_wayland():
+            # no screen size with wayland, the parent window is
+            # the next best thing..
+            width, height = parent.get_size()
+            width = int(width / 1.1)
+            height = int(height / 1.1)
+            return (width, height)
+        else:
+            win = parent.get_window()
+            if win:
+                if qltk.gtk_version[:2] >= (3, 22):
+                    disp = Gdk.Display.get_default()
+                    mon = disp.get_monitor_at_window(win)
+                    rect = mon.get_geometry()
+                else:
+                    # The result should be the same as above, just using
+                    # deprecated methods instead
+                    screen = Gdk.Screen.get_default()
+                    mon_num = screen.get_monitor_at_window(win)
+                    rect = screen.get_monitor_geometry(mon_num)
+                width = int(rect.width * scale)
+                height = int(rect.height * scale)
+                return (width, height)
+
+            width = int(Gdk.Screen.width() * scale)
+            height = int(Gdk.Screen.height() * scale)
+            return (width, height)
 
     def __destroy(self, *args):
         self.destroy()
@@ -224,9 +253,10 @@ class CoverImage(Gtk.EventBox):
         self.__file = None
         self.__current_bci = None
         self.__cancellable = None
+        self._scale = None
 
         self.add(ResizeImage(resize, size))
-        self.connect('button-press-event', self.__show_cover)
+        self.connect('button-press-event', self.__album_clicked)
         self.set_song(song)
         self.get_child().show_all()
 
@@ -249,14 +279,27 @@ class CoverImage(Gtk.EventBox):
                     try:
                         self.set_image(result)
                         self.emit('cover-visible', success)
+                        self.update_bci(result)
                         # If this widget is already 'destroyed', we will get
                         # following error.
                     except AttributeError:
                         pass
+                else:
+                    self.update_bci(None)
             app.cover_manager.acquire_cover(cb, cancellable, song)
 
     def refresh(self):
         self.set_song(self.__song)
+
+    def update_bci(self, albumfile):
+        #if there's a big image displaying, it should update.
+        if self.__current_bci is not None:
+            self.__current_bci.destroy()
+            if albumfile:
+                if self._scale:
+                    self.__show_cover(self.__song, self._scale)
+                else:
+                    self.__show_cover(self.__song)
 
     def __nonzero__(self):
         return bool(self.__file)
@@ -264,26 +307,32 @@ class CoverImage(Gtk.EventBox):
     def __reset_bci(self, bci):
         self.__current_bci = None
 
-    def __show_cover(self, box, event):
-        """Show the cover as a detached BigCenteredImage.
-        If one is already showing, destroy it instead
-        If there is no image, run the AlbumArt plugin
-        """
-
+    def __album_clicked(self, box, event):
         song = self.__song
         if not song:
             return
 
-        if event.button != Gdk.BUTTON_PRIMARY or \
-                event.type != Gdk.EventType.BUTTON_PRESS:
-            return
+        if (event.type != Gdk.EventType.BUTTON_PRESS or
+                event.button == Gdk.BUTTON_MIDDLE):
+            return False
 
+        self._scale = 0.55
+        if event.button == Gdk.BUTTON_SECONDARY:
+            self._scale = 0.9
+        return self.__show_cover(song, scale=self._scale)
+
+    def __show_cover(self, song, scale=0.5):
+        """Show the cover as a detached BigCenteredImage.
+        If one is already showing, destroy it instead
+        If there is no image, run the AlbumArt plugin
+        """
         if not self.__file and song.is_file:
             from quodlibet.qltk.songsmenu import SongsMenu
             from quodlibet import app
 
             SongsMenu.plugins.handle(ALBUM_ART_PLUGIN_ID, app.library,
                                      qltk.get_top_parent(self), [song])
+
             return True
 
         if self.__current_bci is not None:
@@ -296,7 +345,7 @@ class CoverImage(Gtk.EventBox):
 
         try:
             self.__current_bci = BigCenteredImage(
-                song.comma("album"), self.__file, parent=self)
+                song.comma("album"), self.__file, parent=self, scale=scale)
         except GLib.GError: # reload in case the image file is gone
             self.refresh()
         else:

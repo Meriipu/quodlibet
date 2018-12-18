@@ -22,18 +22,24 @@ ways to view your audio library, as well as support for Internet radio and
 audio feeds. It has extremely flexible metadata tag editing and searching
 capabilities.
 
-This manual page is only a short reference for Quod Libet. Complete 
-documentation is available at 
+This manual page is only a short reference for Quod Libet. Complete
+documentation is available at
 https://quodlibet.readthedocs.io/en/latest/guide/index.html.
 
 OPTIONS
 =======
 
+--add-location=<location>
+    Add a file or directory to the library
+
 --debug
     Print debugging information
 
---enqueue <filename|query>
+--enqueue=<filename|query>
     Enqueue a filename or query results
+
+--enqueue-files=<filename[,filename..]>
+    Enqueue comma-separated files
 
 --filter <tag=value>
     Filter on a tag value
@@ -44,6 +50,9 @@ OPTIONS
 --force-previous
     Jump to previous song
 
+--help
+    Display brief usage information
+
 --hide-window
     Hide main window
 
@@ -52,6 +61,9 @@ OPTIONS
 
 --next
     Jump to next song
+
+--no-plugins
+    Start without plugins
 
 --open-browser=BrowserName
     Open a new browser
@@ -79,17 +91,35 @@ OPTIONS
 --print-playlist
     Print the current playlist
 
+--print-query=<query>
+    Print filenames of results of query
+
+--print-query-text
+    Print the active text query
+
 --print-queue
     Print the contents of the queue
 
 --query=search-string
     Search your audio library
 
+--queue=<on|off|t>
+    Show or hide the queue
+
 --quit
     Exit Quod Libet
 
 --random=tag
     Filter on a random value
+
+--rating=<[+|-]0.0..1.0>
+    Set rating of playing song
+
+--rating-down
+    Decrease rating of playing song by one star
+
+--rating-up
+    Increase rating of playing song by one star
 
 --refresh
     Refresh and rescan library
@@ -110,9 +140,6 @@ OPTIONS
 --set-browser=BrowserName
     Set the current browser
 
---set-rating=<0.0..1.0>
-    Rate the playing song
-
 --show-window
     Show main window
 
@@ -132,6 +159,9 @@ OPTIONS
 --status
     Print playing status
 
+--stop
+    Stop playback
+
 --stop-after=<0|1|t>
     Stop after the playing song
 
@@ -144,8 +174,17 @@ OPTIONS
 --unqueue=<filename|query>
     Unqueue a file or query
 
---volume=<(+\|-\|)0..100>
+--version
+    Display version and copyright
+
+--volume=<[+|-]0..100>
     Set the volume
+
+--volume-down
+    Turn down the volume
+
+--volume-up
+    Turn up the volume
 
 ALBUM COVERS
 ============

@@ -27,7 +27,7 @@ def main(argv=None):
     config_file = os.path.join(quodlibet.get_user_dir(), "config")
     quodlibet.init(config_file=config_file)
 
-    from quodlibet.qltk import add_signal_watch, Icons
+    from quodlibet.qltk import add_signal_watch
     add_signal_watch(app.quit)
 
     opts = util.OptionParser(
@@ -40,8 +40,9 @@ def main(argv=None):
 
     app.name = "Ex Falso"
     app.description = _("Audio metadata editor")
-    app.id = "exfalso"
-    quodlibet.set_application_info(Icons.EXFALSO, "exfalso", app.name)
+    app.id = "io.github.quodlibet.ExFalso"
+    app.process_name = "exfalso"
+    quodlibet.set_application_info(app)
 
     import quodlibet.library
     import quodlibet.player
@@ -61,12 +62,14 @@ def main(argv=None):
     app.cover_manager = CoverManager()
     app.cover_manager.init_plugins()
 
-    from quodlibet.qltk import session
-    session.init("exfalso")
+    from quodlibet import session
+    session_client = session.init(app)
 
     quodlibet.enable_periodic_save(save_library=False)
     quodlibet.run(app.window)
     quodlibet.finish_first_session("exfalso")
     config.save()
+
+    session_client.close()
 
     util.print_d("Finished shutdown.")

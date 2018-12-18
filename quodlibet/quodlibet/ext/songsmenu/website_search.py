@@ -7,6 +7,7 @@
 # (at your option) any later version.
 
 import os
+from urllib.parse import quote_plus
 from typing import Optional
 
 from gi.repository import Gtk
@@ -14,7 +15,6 @@ from gi.repository import Gtk
 import quodlibet
 from quodlibet import _
 from quodlibet import qltk
-from quodlibet.compat import quote_plus, text_type
 from quodlibet.formats import AudioFile
 from quodlibet.pattern import Pattern
 from quodlibet.plugins.songsmenu import SongsMenuPlugin
@@ -151,12 +151,11 @@ def website_for(pat: Pattern, song: AudioFile) -> Optional[str]:
         vals = song.comma(k)
         if vals:
             try:
-                encoded = text_type(vals).encode('utf-8')
                 # Escaping ~filename stops ~dirname ~basename etc working
                 # But not escaping means ? % & will cause problems.
                 # Who knows what user wants to do with /, seems better raw.
-                subs[k] = (encoded if k in ['website', '~filename']
-                           else quote_plus(encoded))
+                subs[k] = (vals if k in ['website', '~filename']
+                           else quote_plus(vals))
             except KeyError:
                 print_d("Problem with %s tag values: %r" % (k, vals))
     return pat.format(subs) or None

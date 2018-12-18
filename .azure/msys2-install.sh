@@ -8,7 +8,7 @@ pacman --noconfirm -Suy
 
 pacman --noconfirm -S --needed \
     git \
-    intltool \
+    mingw-w64-$MSYS2_ARCH-gettext \
     mingw-w64-$MSYS2_ARCH-gdk-pixbuf2 \
     mingw-w64-$MSYS2_ARCH-librsvg \
     mingw-w64-$MSYS2_ARCH-gtk3 \
@@ -28,6 +28,3 @@ pacman --noconfirm -S --needed \
     mingw-w64-$MSYS2_ARCH-python3-coverage
 
 pip3 install feedparser musicbrainzngs mutagen pycodestyle pyflakes
-
-cd quodlibet
-MSYSTEM= python3 -R -bb setup.py test

@@ -35,11 +35,8 @@ def exec_module(path):
     """Executes the Python file at `path` and returns it as the module"""
 
     globals_ = {}
-    if sys.version_info[0] == 2:
-        execfile(path, globals_)
-    else:
-        with open(path, encoding="utf-8") as h:
-            exec(h.read(), globals_)
+    with open(path, encoding="utf-8") as h:
+        exec(h.read(), globals_)
     module = types.ModuleType("")
     module.__dict__.update(globals_)
     return module
@@ -97,7 +94,7 @@ def main():
         'po_package': "quodlibet",
         'shortcuts': [
             "data/io.github.quodlibet.QuodLibet.desktop",
-            "data/exfalso.desktop"
+            "data/io.github.quodlibet.QuodLibet.desktop"
         ],
         'dbus_services': [
             "data/net.sacredchao.QuodLibet.service",
@@ -107,7 +104,7 @@ def main():
         ],
         'appdata': [
             "data/io.github.quodlibet.QuodLibet.appdata.xml",
-            "data/exfalso.appdata.xml",
+            "data/io.github.quodlibet.QuodLibet.appdata.xml",
         ],
         'man_pages': [
             "data/quodlibet.1",

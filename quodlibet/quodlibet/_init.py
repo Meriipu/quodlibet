@@ -215,12 +215,9 @@ def _init_gtk():
 
     import gi
 
-    # pygiaio 3.14rev16 switched to fontconfig for PangoCairo. As this results
-    # in 100% CPU under win7 revert it. Maybe we need to update the
-    # cache in the windows installer for it to work... but for now revert.
-    if is_windows():
-        environ['PANGOCAIRO_BACKEND'] = 'win32'
-        environ["GTK_CSD"] = "0"
+    if config.getboolean("settings", "pangocairo_force_fontconfig") and \
+            "PANGOCAIRO_BACKEND" not in environ:
+        environ["PANGOCAIRO_BACKEND"] = "fontconfig"
 
     # disable for consistency and trigger events seem a bit flaky here
     if config.getboolean("settings", "scrollbar_always_visible"):
@@ -238,6 +235,7 @@ def _init_gtk():
     gi.require_version("Gdk", "3.0")
     gi.require_version("Pango", "1.0")
     gi.require_version('Soup', '2.4')
+    gi.require_version('PangoCairo', "1.0")
 
     from gi.repository import Gtk
     from quodlibet.qltk import ThemeOverrider, gtk_version
@@ -308,15 +306,15 @@ def _init_gtk():
         style_provider = Gtk.CssProvider()
         style_provider.load_from_data(b"""
             spinbutton, button {
-                min-height: 1.8rem;
+                min-height: 22px;
             }
 
             .view button {
-                min-height: 2.0rem;
+                min-height: 24px;
             }
 
             entry {
-                min-height: 2.4rem;
+                min-height: 28px;
             }
 
             entry.cell {
@@ -338,6 +336,8 @@ def _init_gtk():
         css_override.register_provider("Radiance", style_provider)
         # https://github.com/quodlibet/quodlibet/issues/2677
         css_override.register_provider("Clearlooks-Phenix", style_provider)
+        # https://github.com/quodlibet/quodlibet/issues/2997
+        css_override.register_provider("Breeze", style_provider)
 
     if gtk_version[:2] >= (3, 18):
         # Hack to get some grab handle like thing for panes
