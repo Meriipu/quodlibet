@@ -20,7 +20,7 @@ from math import ceil, floor
 from quodlibet import _, app
 from quodlibet import print_w
 from quodlibet import util
-from quodlibet.plugins import PluginConfig, IntConfProp, ConfProp
+from quodlibet.plugins import PluginConfig, IntConfProp, ConfProp, BoolConfProp
 from quodlibet.plugins.events import EventPlugin
 from quodlibet.qltk import Align
 from quodlibet.qltk import Icons
