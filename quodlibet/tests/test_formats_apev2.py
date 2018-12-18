@@ -7,12 +7,12 @@
 from tests import TestCase, get_data_path
 
 import os
+from io import BytesIO
 
 import mutagen
 
 from mutagen.apev2 import BINARY, APEValue
 
-from quodlibet.compat import cBytesIO
 from quodlibet.formats.monkeysaudio import MonkeysAudioFile
 from quodlibet.formats.mpc import MPCFile
 from quodlibet.formats.wavpack import WavpackFile
@@ -150,7 +150,8 @@ def test_ma_file_old():
     assert s("~encoding") == ""
     assert s("~#channels") == 2
     assert s("~#samplerate") == 44100
-    assert s("~#bitdepth", 0) == 0
+    # depends on the mutagen version
+    assert s("~#bitdepth", 0) in (0, 16)
 
 
 class TWavpackFileAPEv2(TestCase, TAPEv2FileMixin):
@@ -205,7 +206,7 @@ class TWvCoverArt(TestCase):
         self.s.clear_images()
 
     def test_set_image(self):
-        fileobj = cBytesIO(b"foo")
+        fileobj = BytesIO(b"foo")
         image = EmbeddedImage(fileobj, "image/jpeg", 10, 10, 8)
         self.s.set_image(image)
         self.assertTrue(self.s.has_images)
@@ -218,7 +219,7 @@ class TWvCoverArt(TestCase):
     def test_set_image_no_tag(self):
         m = mutagen.apev2.APEv2(self.f)
         m.delete()
-        fileobj = cBytesIO(b"foo")
+        fileobj = BytesIO(b"foo")
         image = EmbeddedImage(fileobj, "image/jpeg", 10, 10, 8)
         self.s.set_image(image)
         images = self.s.get_images()

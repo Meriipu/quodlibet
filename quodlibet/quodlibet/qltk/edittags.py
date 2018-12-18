@@ -15,6 +15,7 @@ from quodlibet import C_, _
 from quodlibet import qltk
 from quodlibet import config
 from quodlibet import util
+from quodlibet import app
 
 from quodlibet.util import massagers
 
@@ -36,8 +37,6 @@ from quodlibet.util.i18n import numeric_phrase
 from quodlibet.util.tags import USER_TAGS, MACHINE_TAGS, sortkey as tagsortkey
 from quodlibet.util.string.splitters import (split_value, split_title,
     split_people, split_album)
-from quodlibet.compat import iteritems, string_types, text_type, listkeys, \
-    listmap, itervalues
 
 
 class Comment(object):
@@ -157,10 +156,10 @@ class AudioFileGroup(dict):
         self._can_change = can_change
 
         # collect comment representations
-        for tag, count in iteritems(keys):
+        for tag, count in keys.items():
             first_value = first[tag]
-            if not isinstance(first_value, string_types):
-                first_value = text_type(first_value)
+            if not isinstance(first_value, str):
+                first_value = str(first_value)
             shared = all[tag]
             complete = count == total
             if shared and complete:
@@ -200,7 +199,11 @@ class SplitValues(Gtk.ImageMenuItem):
         self.set_image(Gtk.Image.new_from_icon_name(
             Icons.EDIT_FIND_REPLACE, Gtk.IconSize.MENU))
         spls = config.gettext("editing", "split_on").split()
-        self.set_sensitive(len(split_value(value, spls)) > 1)
+        vals = [val if len(val) <= 64 else val[:64] + "…"
+                for val in split_value(value, spls)]
+        string = ", ".join(["{}={}".format(tag, val) for val in vals])
+        self.set_label(string)
+        self.set_sensitive(len(vals) > 1)
 
     def activated(self, tag, value):
         spls = config.gettext("editing", "split_on").split()
@@ -217,7 +220,14 @@ class SplitDisc(Gtk.ImageMenuItem):
             label=_("Split Disc out of _Album"), use_underline=True)
         self.set_image(Gtk.Image.new_from_icon_name(
             Icons.EDIT_FIND_REPLACE, Gtk.IconSize.MENU))
-        self.set_sensitive(split_album(value)[1] is not None)
+
+        album, disc = split_album(value)
+        if disc is not None:
+            album = album if len(album) <= 64 else album[:64] + "…"
+            self.set_label("{}={}, {}={}".format(tag, album,
+                           self.needs[0], disc))
+
+        self.set_sensitive(disc is not None)
 
     def activated(self, tag, value):
         album, disc = split_album(value)
@@ -234,12 +244,24 @@ class SplitTitle(Gtk.ImageMenuItem):
             label=_("Split _Version out of Title"), use_underline=True)
         self.set_image(Gtk.Image.new_from_icon_name(
             Icons.EDIT_FIND_REPLACE, Gtk.IconSize.MENU))
-        spls = config.gettext("editing", "split_on").split()
-        self.set_sensitive(bool(split_title(value, spls)[1]))
+        tag_spls = config.gettext("editing", "split_on").split()
+        sub_spls = config.gettext("editing", "sub_split_on").split()
+
+        title, versions = split_title(value, tag_spls, sub_spls)
+        if versions:
+            title = title if len(title) <= 64 else title[:64] + "…"
+            versions = [ver if len(ver) <= 64 else ver[:64] + "…"
+                        for ver in versions]
+            string = (", ".join(["{}={}".format(tag, title)] +
+               ["{}={}".format(self.needs[0], ver) for ver in versions]))
+            self.set_label(string)
+
+        self.set_sensitive(bool(versions))
 
     def activated(self, tag, value):
-        spls = config.gettext("editing", "split_on").split()
-        title, versions = split_title(value, spls)
+        tag_spls = config.gettext("editing", "split_on").split()
+        sub_spls = config.gettext("editing", "sub_split_on").split()
+        title, versions = split_title(value, tag_spls, sub_spls)
         return [(tag, title)] + [("version", v) for v in versions]
 
 
@@ -251,12 +273,24 @@ class SplitPerson(Gtk.ImageMenuItem):
         super(SplitPerson, self).__init__(label=self.title, use_underline=True)
         self.set_image(Gtk.Image.new_from_icon_name(
             Icons.EDIT_FIND_REPLACE, Gtk.IconSize.MENU))
-        spls = config.gettext("editing", "split_on").split()
-        self.set_sensitive(bool(split_people(value, spls)[1]))
+        tag_spls = config.gettext("editing", "split_on").split()
+        sub_spls = config.gettext("editing", "sub_split_on").split()
+
+        artist, others = split_people(value, tag_spls, sub_spls)
+        if others:
+            artist = artist if len(artist) <= 64 else artist[:64] + "…"
+            others = [other if len(other) <= 64 else other[:64] + "…"
+                        for other in others]
+            string = (", ".join(["{}={}".format(tag, artist)] +
+                ["{}={}".format(self.needs[0], o) for o in others]))
+            self.set_label(string)
+
+        self.set_sensitive(bool(others))
 
     def activated(self, tag, value):
-        spls = config.gettext("editing", "split_on").split()
-        artist, others = split_people(value, spls)
+        tag_spls = config.gettext("editing", "split_on").split()
+        sub_spls = config.gettext("editing", "sub_split_on").split()
+        artist, others = split_people(value, tag_spls, sub_spls)
         return [(tag, artist)] + [(self.needs[0], o) for o in others]
 
 
@@ -619,6 +653,8 @@ class EditTags(Gtk.VBox):
             comment = entry.value
             text = comment.text
 
+            split_menu = Gtk.Menu()
+
             for Item in items:
                 if Item.tags and entry.tag not in Item.tags:
                     continue
@@ -630,15 +666,42 @@ class EditTags(Gtk.VBox):
                 else:
                     b.connect('activate', self.__menu_activate, view)
 
-                    if (not min(listmap(self.__songinfo.can_change, b.needs) +
-                                [1])
+                    if (not min(list(
+                                map(self.__songinfo.can_change, b.needs))
+                                + [1])
                             or comment.is_special()):
                         b.set_sensitive(False)
 
-                    menu.append(b)
+                    vals = b.activated(entry.tag, text)
+                    if len(vals) > 1 and vals[1][1]:
+                        split_menu.append(b)
 
-            if menu.get_children():
-                menu.append(SeparatorMenuItem())
+            if split_menu.get_children():
+                split_menu.append(SeparatorMenuItem())
+
+            pref_item = MenuItem(_("_Configure"), Icons.PREFERENCES_SYSTEM)
+            split_menu.append(pref_item)
+
+            def show_prefs(parent):
+                from quodlibet.qltk.exfalsowindow import ExFalsoWindow
+                if isinstance(app.window, ExFalsoWindow):
+                    from quodlibet.qltk.exfalsowindow import PreferencesWindow
+                    window = PreferencesWindow(parent)
+                else:
+                    from quodlibet.qltk.prefs import PreferencesWindow
+                    window = PreferencesWindow(parent, open_page="tagging")
+                window.show()
+
+            connect_obj(pref_item, "activate", show_prefs, self)
+
+            split_item = MenuItem(_("_Split Tag"), Icons.EDIT_FIND_REPLACE)
+
+            if split_menu.get_children():
+                split_item.set_submenu(split_menu)
+            else:
+                split_item.set_sensitive(False)
+
+            menu.append(split_item)
 
         copy_b = MenuItem(_("_Copy Value(s)"), Icons.EDIT_COPY)
         copy_b.connect('activate', self.__copy_tag_value, view)
@@ -668,7 +731,7 @@ class EditTags(Gtk.VBox):
         remove.set_sensitive(bool(rows))
 
     def __add_new_tag(self, model, tag, value):
-        assert isinstance(value, text_type)
+        assert isinstance(value, str)
         iters = [i for (i, v) in model.iterrows() if v.tag == tag]
         if iters and not self.__songinfo.can_multiple_values(tag):
             title = _("Unable to add tag")
@@ -697,9 +760,9 @@ class EditTags(Gtk.VBox):
                 break
             tag = add.get_tag()
             value = add.get_value()
-            assert isinstance(value, text_type)
+            assert isinstance(value, str)
             value = massagers.validate(tag, value)
-            assert isinstance(value, text_type)
+            assert isinstance(value, str)
             if not self.__songinfo.can_change(tag):
                 title = _("Invalid tag")
                 msg = _("Invalid tag <b>%s</b>\n\nThe files currently"
@@ -744,7 +807,7 @@ class EditTags(Gtk.VBox):
         added = {}
         renamed = {}
 
-        for entry in itervalues(model):
+        for entry in model.values():
             if entry.edited and not (entry.deleted or entry.renamed):
                 if entry.origvalue is not None:
                     l = updated.setdefault(entry.tag, [])
@@ -777,7 +840,7 @@ class EditTags(Gtk.VBox):
                     break
 
             changed = False
-            for key, values in iteritems(updated):
+            for key, values in updated.items():
                 for (new_value, old_value) in values:
                     if song.can_change(key):
                         if old_value is None:
@@ -786,13 +849,13 @@ class EditTags(Gtk.VBox):
                             song.change(key, old_value.text, new_value.text)
                         changed = True
 
-            for key, values in iteritems(added):
+            for key, values in added.items():
                 for value in values:
                     if song.can_change(key):
                         song.add(key, value.text)
                         changed = True
 
-            for key, values in iteritems(deleted):
+            for key, values in deleted.items():
                 for value in values:
                     if not value.shared:
                         # In case it isn't shared we don't know the actual
@@ -806,7 +869,7 @@ class EditTags(Gtk.VBox):
                         changed = True
 
             save_rename = []
-            for new_tag, values in iteritems(renamed):
+            for new_tag, values in renamed.items():
                 for old_tag, new_value, old_value in values:
                     if (song.can_change(new_tag) and old_tag in song):
                         if not new_value.is_special():
@@ -955,7 +1018,7 @@ class EditTags(Gtk.VBox):
             self.__songinfo = AudioFileGroup(songs)
         songinfo = self.__songinfo
 
-        keys = listkeys(songinfo)
+        keys = list(songinfo.keys())
         default_tags = get_default_tags()
         keys = set(keys + default_tags)
 

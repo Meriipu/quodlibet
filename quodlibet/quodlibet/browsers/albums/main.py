@@ -40,12 +40,11 @@ from quodlibet.qltk.x import SymbolicIconImage
 from quodlibet.qltk.searchbar import SearchBarBox
 from quodlibet.qltk.menubutton import MenuButton
 from quodlibet.qltk import Icons
-from quodlibet.util import copool, connect_destroy
+from quodlibet.util import copool, connect_destroy, cmp
 from quodlibet.util.library import background_filter
 from quodlibet.util import connect_obj, DeferredSignal
 from quodlibet.qltk.cover import get_no_cover_pixbuf
 from quodlibet.qltk.image import add_border_widget, get_surface_for_pixbuf
-from quodlibet.compat import cmp
 
 
 def get_cover_size():
@@ -399,6 +398,10 @@ class AlbumList(Browser, util.InstanceTracker, VisibleUpdate,
     @classmethod
     def init(klass, library):
         super(AlbumList, klass).load_pattern()
+
+    def finalize(self, restored):
+        if not restored:
+            self.view.set_cursor((0,))
 
     @classmethod
     def _destroy_model(klass):

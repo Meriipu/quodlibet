@@ -9,7 +9,6 @@
 
 from gi.repository import Gtk
 
-from quodlibet.compat import listvalues
 from quodlibet.plugins.gui import MenuItemPlugin
 from quodlibet.plugins.songshelpers import is_a_file
 from quodlibet.qltk.pluginwin import PluginWindow
@@ -149,7 +148,7 @@ class SongsMenuPluginHandler(PluginHandler):
                 albums[key] = []
             albums[key].append(song)
 
-        albums = listvalues(albums)
+        albums = list(albums.values())
         for album in albums:
             album.sort()
         return albums
@@ -411,7 +410,8 @@ class SongsMenu(Gtk.Menu):
             def show_files_cb(menu_item):
                 print_d("Trying to show files...")
                 if not show_songs(songs):
-                    msg = ErrorMessage(self.plugin_window,
+                    parent = get_menu_item_top_parent(menu_item)
+                    msg = ErrorMessage(parent,
                                  _("Unable to show files"),
                                  _("Error showing files, "
                                    "or no program available to show them."))

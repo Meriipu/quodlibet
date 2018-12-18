@@ -7,20 +7,14 @@
 # (at your option) any later version.
 
 import sys
-import codecs
+import os
 
-from .compat import PY2
-
-if PY2:
-    # some code depends on utf-8 default encoding (pygtk used to set it)
-    reload(sys)
-    sys.setdefaultencoding("utf-8")
-
-    # py2 doesn't know about cp65001, but tries to use it if it is the active
-    # code page
-    codecs.register(
-        lambda name: codecs.lookup("utf-8") if name == "cp65001" else None)
-
+if os.name == "nt":
+    # To prevent us loading DLLs in the system directory which clash
+    # with the ones we ship.
+    # https://github.com/quodlibet/quodlibet/issues/2817
+    from ctypes import windll
+    windll.kernel32.SetDllDirectoryW(os.path.dirname(sys.executable))
 
 from ._import import install_redirect_import_hook
 install_redirect_import_hook()

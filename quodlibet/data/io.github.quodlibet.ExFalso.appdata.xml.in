@@ -1,28 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Copyright 2013 Christoph Reiter -->
-<application>
-    <id type="desktop-application">exfalso.desktop</id>
+<component type="desktop-application">
+    <id>io.github.quodlibet.ExFalso</id>
     <name>Ex Falso</name>
-    <_summary>Edit tags in your audio files</_summary>
+    <summary>Edit tags in your audio files</summary>
     <metadata_license>CC0</metadata_license>
     <project_license>GPL-2.0</project_license>
     <translation type="gettext">quodlibet</translation>
-    <launchable type="desktop-id">exfalso.desktop</launchable>
+    <launchable type="desktop-id">io.github.quodlibet.ExFalso.desktop</launchable>
     <provides>
+        <id>exfalso.desktop</id>
         <binary>exfalso</binary>
     </provides>
 
     <description>
-    <_p>
+    <p>
         Ex Falso is a tag editor with the same tag editing interface as
         Quod Libet. It lets you display and edit any tags you want in the
         file, for all the file formats it supports.
-    </_p>
-    <_p>
+    </p>
+    <p>
         Supported file formats include Ogg Vorbis/Opus/Speex/FLAC, MP3,
         FLAC, MOD/XM/IT, Musepack, Wavpack, MPEG-4 AAC, Monkeys Audio, WMA,
         SPC, MIDI.
-    </_p>
+    </p>
     </description>
 
     <screenshots>
@@ -32,6 +33,8 @@
     </screenshots>
 
     <releases>
+        <release version="4.2.0" date="2018-10-31"/>
+        <release version="4.1.0" date="2018-06-03"/>
         <release version="4.0.2" date="2018-01-17"/>
         <release version="4.0.1" date="2018-01-13"/>
         <release version="4.0.0" date="2017-12-26"/>
@@ -44,4 +47,4 @@
     <url type="help">https://quodlibet.readthedocs.io/en/latest/guide/index.html</url>
     <url type="translate">https://quodlibet.readthedocs.io/en/latest/translation/howto.html</url>
     <update_contact>quod-libet-development@googlegroups.com</update_contact>
-</application>
+</component>

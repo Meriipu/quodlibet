@@ -16,9 +16,8 @@ from quodlibet.util.string import split_escape
 
 from quodlibet import browsers
 
-from quodlibet.compat import listfilter, text_type
 from quodlibet import util
-from quodlibet.util import print_d, print_e
+from quodlibet.util import print_d, print_e, copool
 
 from quodlibet.qltk.browser import LibraryBrowser
 from quodlibet.qltk.properties import SongProperties
@@ -27,6 +26,8 @@ from quodlibet.util.library import scan_library
 from quodlibet.order.repeat import RepeatListForever, RepeatSongForever, \
         OneSong
 from quodlibet.order.reorder import OrderWeighted, OrderShuffle
+
+from quodlibet.config import RATINGS
 
 
 class CommandError(Exception):
@@ -275,6 +276,19 @@ def _play_file(app, value):
     app.window.open_file(value)
 
 
+@registry.register("add-location", args=1)
+def _add_location(app, value):
+    if os.path.isfile(value):
+        ret = app.library.add_filename(value)
+        if not ret:
+            print_e("Couldn't add file to library")
+    elif os.path.isdir(value):
+        copool.add(app.library.scan, [value], cofuncid="library",
+                   funcid="library")
+    else:
+        print_e("Invalid location")
+
+
 @registry.register("toggle-window")
 def _toggle_window(app):
     if app.window.get_property('visible'):
@@ -293,20 +307,30 @@ def _show_window(app):
     app.show()
 
 
-@registry.register("set-rating", args=1)
-def _set_rating(app, value):
+@registry.register("rating", args=1)
+def _rating(app, value):
     song = app.player.song
     if not song:
         return
 
-    value = arg2text(value)
-
-    try:
-        song["~#rating"] = max(0.0, min(1.0, float(value)))
-    except (ValueError, TypeError):
-        pass
+    if value[0] in ('+', '-'):
+        if len(value) > 1:
+            try:
+                change = float(value[1:])
+            except ValueError:
+                return
+        else:
+            change = (1 / RATINGS.number)
+        if value[0] == '-':
+            change = -change
+        rating = song["~#rating"] + change
     else:
-        app.library.changed([song])
+        try:
+            rating = float(value)
+        except (ValueError, TypeError):
+            return
+    song["~#rating"] = max(0.0, min(1.0, rating))
+    app.library.changed([song])
 
 
 @registry.register("dump-browsers")
@@ -382,7 +406,7 @@ def _properties(app, value=None):
     else:
         songs = [player.song]
 
-    songs = listfilter(None, songs)
+    songs = list(filter(None, songs))
 
     if songs:
         window = SongProperties(library, songs, parent=window)
@@ -465,12 +489,6 @@ def _status(app):
     return text2fsn(status)
 
 
-@registry.register("song-list", args=1)
-def _song_list(app, value):
-    # deprecated
-    return
-
-
 @registry.register("queue", args=1)
 def _queue(app, value):
     window = app.window
@@ -520,7 +538,7 @@ def _print_query(app, query):
 @registry.register("print-query-text")
 def _print_query_text(app):
     if app.browser.can_filter_text():
-        return text2fsn(text_type(app.browser.get_filter_text()) + u"\n")
+        return text2fsn(str(app.browser.get_filter_text()) + u"\n")
 
 
 @registry.register("print-playing", optional=1)

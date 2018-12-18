@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Copyright 2005 Michael Urman
-#        2016-17 Nick Boultbee
+#        2016-18 Nick Boultbee
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -8,6 +8,7 @@
 # (at your option) any later version.
 
 import os
+from typing import Dict, List
 
 from gi.repository import Gtk
 from os.path import splitext, dirname
@@ -21,7 +22,6 @@ from quodlibet.plugins.songshelpers import each_song, is_writable, is_a_file, \
 from quodlibet.qltk import ErrorMessage, Icons
 from quodlibet.util.path import get_home_dir
 from quodlibet.plugins.songsmenu import SongsMenuPlugin
-from quodlibet.compat import iteritems
 
 __all__ = ['Export', 'Import']
 
@@ -170,8 +170,15 @@ class Import(SongsMenuPlugin):
                          dict(select=len(songs), meta=len(metadata))).run()
             return
 
+        self.update_files(songs, metadata, names, append=append, rename=rename)
+
+    def update_files(self,
+                     songs: List,
+                     metadata: List[Dict[str, List]],
+                     names: List,
+                     append=True, rename=False):
         for song, meta, name in zip(songs, metadata, names):
-            for key, values in iteritems(meta):
+            for key, values in meta.items():
                 if append and key in song:
                     values = song.list(key) + values
                 song[key] = '\n'.join(values)
@@ -179,3 +186,4 @@ class Import(SongsMenuPlugin):
                 origname = song['~filename']
                 newname = name + origname[origname.rfind('.'):]
                 app.library.rename(origname, newname)
+        app.library.changed(songs)
