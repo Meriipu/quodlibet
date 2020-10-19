@@ -39,7 +39,8 @@ from quodlibet.util.collection import XSPFBackedPlaylist, FileBackedPlaylist
 from quodlibet.util.urllib import urlopen
 
 from .util import parse_m3u, parse_pls, PLAYLISTS,\
-    confirm_remove_playlist_dialog_invoke, _name_for
+    confirm_remove_playlist_dialog_invoke, _name_for,\
+    confirm_dnd_playlist_dialog_invoke
 
 DND_QL, DND_URI_LIST, DND_MOZ_URL = range(3)
 
@@ -394,12 +395,32 @@ class PlaylistsBrowser(Browser, DisplayPatternMixin):
         playlist.inhibit = False
 
     def __get_name_of_current_selected_playlist(self):
+        """Returns the currently selected playlist, which has a string-representation
+           on the convenient form `"Playlistname" (n tracks)`
+        """
         model, iter = self.__selected_playlists()
         if not iter:
             return None
         path = model.get_path(iter)
         playlist = model[path][0]
         return playlist
+
+    def _add_drag_data_tracks_to_playlist(self, target_playlist, songs):
+        """helper-function to facilitate unit-tests without fiddling with views"""
+        # Accidentally extending through DnD'ing a playlist can be a fairly
+        # large operation, so prompt the user before proceeding.
+        # See issue #2367
+        response = confirm_dnd_playlist_dialog_invoke(
+            self, songs, target_playlist, self.Confirmer)
+        if response:
+            target_playlist.extend(songs)
+            self.changed(target_playlist)
+            was_modified = True
+        else:
+            print_d("DnD-extension of playlist cancelled through prompt")
+            was_modified = False
+
+        return was_modified
 
     def __drag_data_received(self, view, ctx, x, y, sel, tid, etime, library):
         # TreeModelSort doesn't support GtkTreeDragDestDrop.
@@ -408,23 +429,37 @@ class PlaylistsBrowser(Browser, DisplayPatternMixin):
         if tid == DND_QL:
             filenames = qltk.selection_get_filenames(sel)
             songs = list(filter(None, [library.get(f) for f in filenames]))
+            # Used in conjunction with the prompt for DnD to decide whether to
+            # perform various updates/refreshes.
+            was_modified = True
             if not songs:
                 Gtk.drag_finish(ctx, False, False, etime)
                 return
             try:
                 path, pos = view.get_dest_row_at_pos(x, y)
             except TypeError:
-                playlist = XSPFBackedPlaylist.from_songs(PLAYLISTS, songs,
-                                                         library)
-                GLib.idle_add(self._select_playlist, playlist)
+                # e.g. the target is the empty area after the list of playlists.
+                # TODO: Maybe prompt for this too? Though getting a new playlist is
+                # less intrusive than modifying an existing playlist.
+                target_playlist = XSPFBackedPlaylist.from_songs(
+                    PLAYLISTS, songs, library)
+                GLib.idle_add(self._select_playlist, target_playlist)
+                self.changed(target_playlist)
             else:
-                playlist = model[path][0]
-                playlist.extend(songs)
-            self.changed(playlist)
+                # Note that the source might not be the currently selected playlist, as
+                # the tracks may come from e.g. a floating browser.
+                target_playlist = model[path][0]
+
+                # Call a helper-function that adds the tracks to the playlist if the
+                # user accepts the prompt.
+                was_modified = self._add_drag_data_tracks_to_playlist(
+                    target_playlist, songs)
+
             Gtk.drag_finish(ctx, True, False, etime)
             # Cause a refresh to the dragged-to playlist if it is selected
             # so that the dragged (duplicate) track(s) appears
-            if playlist is self.__get_name_of_current_selected_playlist():
+            selected_pl = self.__get_name_of_current_selected_playlist()
+            if target_playlist is selected_pl and was_modified:
                 model, plist_iter = self.__selected_playlists()
                 songlist = qltk.get_top_parent(self).songlist
                 self.activate(resort=not songlist.is_sorted())
