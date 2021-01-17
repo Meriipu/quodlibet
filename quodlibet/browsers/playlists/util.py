@@ -10,7 +10,7 @@ import os
 from senf import uri2fsn, fsnative, fsn2text, path2fsn, bytes2fsn, text2fsn
 
 import quodlibet
-from quodlibet import _, print_d
+from quodlibet import ngettext, _, print_d
 from quodlibet import formats
 from quodlibet.qltk import Icons
 from quodlibet.qltk.msg import ConfirmationPrompt
@@ -47,6 +47,28 @@ def confirm_remove_playlist_dialog_invoke(
     ok_icon = Icons.EDIT_DELETE
 
     dialog = Confirmer(parent, title, description, ok_text, ok_icon)
+    prompt = dialog.run()
+    response = (prompt == Confirmer.RESPONSE_INVOKE)
+    return response
+
+
+def confirm_remove_playlist_tracks_dialog_invoke(
+    parent, songs, Confirmer=ConfirmationPrompt):
+    """Creates and invokes a confirmation dialog that asks the user whether or not
+       to go forth with the removal of the selected track(s) from the playlist.
+    """
+    songs = set(songs)
+    if not songs:
+        return True
+
+    count = len(songs)
+    song = next(iter(songs))
+    title = ngettext("Remove track: \"{title}\" from playlist?",
+                     "Remove {count} tracks from playlist?", count).format(
+                         title=song('title') or song('~basename'), count=count)
+
+    ok_text = _("Remove from Playlist")
+    dialog = Confirmer(parent, title, "", ok_text)
     prompt = dialog.run()
     response = (prompt == Confirmer.RESPONSE_INVOKE)
     return response
