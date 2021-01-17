@@ -10,15 +10,26 @@
 
 from typing import Dict
 import shutil
+from collections import OrderedDict
 
 from quodlibet.util import enum
 from . import const
 from quodlibet.util.config import Config, Error
 from quodlibet.util import print_d, print_w
 from quodlibet.util import is_osx, is_windows
+from gi.repository import Pango
 
 # Some plugins can be enabled on first install
 AUTO_ENABLED_PLUGINS = ["Shuffle Playlist", "Remove Playlist Duplicates"]
+
+
+# temporary placement of awful enum
+EllipsizingModes = OrderedDict([
+    ('BEGINNING', Pango.EllipsizeMode.START),
+    ('MIDDLE', Pango.EllipsizeMode.MIDDLE),
+    ('END', Pango.EllipsizeMode.END),
+    ('NONE', Pango.EllipsizeMode.NONE)
+])
 
 
 # this defines the initial and default values
@@ -218,6 +229,10 @@ INITIAL: Dict[str, Dict[str, str]] = {
 
         # the format of the timestamps in DateColumn
         "datecolumn_timestamp_format": "",
+
+        # the EllipsizeMode to use for SongColumn filepaths, defined in enum
+        # (above as of writing); BEGINNING, MIDDLE, END, NONE
+        "ellipsizing_mode": "MIDDLE",
 
         # scrollbar does not fade out when inactive
         "scrollbar_always_visible":
