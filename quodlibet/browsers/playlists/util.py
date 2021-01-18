@@ -72,6 +72,24 @@ def confirm_remove_playlist_tracks_dialog_invoke(
     response = (prompt == Confirmer.RESPONSE_INVOKE)
     return response
 
+def confirm_dnd_playlist_dialog_invoke(
+    parent, songs, target_playlist_name, Confirmer=ConfirmationPrompt):
+    """see confirm_remove_playlist_dialog_invoke above, except for
+       the action of attempting to extend a playlist with a second
+       dragged and dropped playlist.
+    """
+    title = ngettext("Extend playlist {pl_name} with {num} additional track?",
+                     "Extend playlist {pl_name} with {num} additional tracks?",
+                     len(songs)).format(pl_name=target_playlist_name, num=len(songs))
+
+    description = ""
+    ok_text = _("_Add Tracks")
+
+    dialog = Confirmer(parent, title, description, ok_text)
+    prompt = dialog.run()
+    response = (prompt == Confirmer.RESPONSE_INVOKE)
+    return response
+
 
 class GetPlaylistName(GetStringDialog):
     def __init__(self, parent):
