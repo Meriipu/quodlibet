@@ -68,6 +68,28 @@ def confirm_dnd_playlist_dialog_invoke(
     return prompt == confirmer_cls.RESPONSE_INVOKE
 
 
+def confirm_remove_playlist_tracks_dialog_invoke(
+    parent, songs, Confirmer=ConfirmationPrompt):
+    """Creates and invokes a confirmation dialog that asks the user whether or not
+       to go forth with the removal of the selected track(s) from the playlist.
+    """
+    songs = set(songs)
+    if not songs:
+        return True
+
+    count = len(songs)
+    song = next(iter(songs))
+    title = ngettext("Remove track: \"%(title)s\" from playlist?",
+                     "Remove %(count)d tracks from playlist?", count
+                    ) % {'title': song('title') or song('~basename'), 'count': count}
+
+    ok_text = _("Remove from Playlist")
+    dialog = Confirmer(parent, title, "", ok_text)
+    prompt = dialog.run()
+    response = (prompt == Confirmer.RESPONSE_INVOKE)
+    return response
+
+
 class GetPlaylistName(GetStringDialog):
     def __init__(self, parent):
         super().__init__(

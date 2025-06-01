@@ -43,6 +43,7 @@ from .util import (
     parse_pls,
     _name_for,
     confirm_remove_playlist_dialog_invoke,
+    confirm_remove_playlist_tracks_dialog_invoke,
     confirm_dnd_playlist_dialog_invoke,
 )
 
@@ -356,6 +357,18 @@ class PlaylistsBrowser(Browser, DisplayPatternMixin):
             if not removals:
                 print_w("No songs selected to remove")
                 return
+
+            parent = self
+            songset = {removals[key] for key in removals}
+            response = confirm_remove_playlist_tracks_dialog_invoke(
+                parent=parent,
+                songs=songset,
+                Confirmer=self.Confirmer,
+            )
+            if not response:
+                print_d("Removal of track(s) from playlist stopped via prompt")
+                return
+
             if self._query is None or not self.get_filter_text():
                 # Calling playlist.remove_songs(songs) won't remove the
                 # right ones if there are duplicates
