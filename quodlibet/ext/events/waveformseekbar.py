@@ -416,7 +416,8 @@ class WaveformScale(Gtk.EventBox):
         width,
         height,
         elapsed_color,
-        hover_color,
+        played_hover_color,
+        unplayed_hover_color,
         remaining_color,
         show_current_pos_config,
     ):
@@ -446,32 +447,35 @@ class WaveformScale(Gtk.EventBox):
 
         # Use the clip rectangles to redraw only what is necessary
         for cx, _cy, cw, _ch in cr.copy_clip_rectangle_list():
-            for x in range(
-                int(floor(cx * pixel_ratio)), int(ceil((cx + cw) * pixel_ratio)), 1
-            ):
+            start_x = int(floor(cx * pixel_ratio))
+            end_x = int(ceil((cx + cw) * pixel_ratio))
+            for x in range(start_x, end_x, 1):
                 if mouse_position >= 0:
                     if self._seeking:
                         # The user is seeking (holding mousebutton down)
-                        fg_color = (
-                            elapsed_color if x < mouse_position else remaining_color
-                        )
+                        fg_color = (elapsed_color if x < mouse_position else remaining_color)
                     elif show_current_pos_config:
-                        # Use hover color and elapsed color to display the
-                        # current playing position while hovering
+                        # The waveform to the left of the mouse (can be both played and yet to play)
                         if x < mouse_position:
+                            # The left waveform that has already been played
                             if x < position_width:
-                                fg_color = elapsed_color
+                                fg_color = played_hover_color   # was:elapsed_color
+                            # The left waveform that has yet to play
                             else:
-                                fg_color = hover_color
+                                fg_color = unplayed_hover_color  # was:hover_color
+                        # The waveform to the right of the mouse which HAS been played
+                        # implies if x >= mouse_position
                         elif x < position_width:
-                            fg_color = hover_color
+                            fg_color = elapsed_color  # was:hover_color
+                        # The waveform to the right of the mouse hwic has NOT been played
                         else:
                             fg_color = remaining_color
+                    # If hover colours are disabled for current pos
                     else:
-                        # The mouse is hovering the seekbar
                         fg_color = (
-                            hover_color if x < mouse_position else remaining_color
+                            unplayed_hover_color if x < mouse_position else remaining_color
                         )
+                # No mouse hover, normal colours.
                 else:
                     fg_color = elapsed_color if x < position_width else remaining_color
 
@@ -539,13 +543,14 @@ class WaveformScale(Gtk.EventBox):
 
         if self._rms_vals:
             self.draw_waveform(
-                cr,
-                width,
-                height,
-                self.elapsed_color(context),
-                self.hover_color(context),
-                self.remaining_color(context),
-                CONFIG.show_current_pos,
+                cr=cr,
+                width=width,
+                height=height,
+                elapsed_color=self.elapsed_color(context),
+                played_hover_color=self.played_hover_color(context),
+                unplayed_hover_color=self.unplayed_hover_color(context),
+                remaining_color=self.remaining_color(context),
+                show_current_pos_config=CONFIG.show_current_pos,
             )
         else:
             self.draw_placeholder(cr, width, height, self.remaining_color(context))
@@ -559,6 +564,41 @@ class WaveformScale(Gtk.EventBox):
             if (text := CONFIG.elapsed_color)
             else get_fg_highlight_color(context)
         )
+
+    @staticmethod
+    def apply_mult(a, b, strength):
+        weight1 = strength * a.alpha
+        weight2 = (1 - strength) * b.alpha
+        return Gdk.RGBA(
+            (weight1 * a.red + weight2 * b.red),
+            (weight1 * a.green + weight2 * b.green),
+            (weight1 * a.blue + weight2 * b.blue),
+            (weight1 + weight2),
+        )
+
+    @staticmethod
+    def apply_shade(base, strength):
+        return Gdk.RGBA(
+            base.red * (1 - strength),
+            base.green * (1 - strength),
+            base.blue * (1 - strength),
+            base.alpha,
+        )
+
+    @classmethod
+    @lru_cache
+    def unplayed_hover_color(cls, context: Gtk.StyleContext) -> Gdk.RGBA:
+        elapsed_color = parse_color(CONFIG.elapsed_color)
+        remaining_color = parse_color(CONFIG.remaining_color)
+        unplayed_hover_color = cls.apply_mult(elapsed_color, remaining_color, 0.65)
+        return unplayed_hover_color
+
+    @classmethod
+    @lru_cache
+    def played_hover_color(cls, context: Gtk.StyleContext) -> Gdk.RGBA:
+        elapsed_color = parse_color(CONFIG.elapsed_color)
+        played_hover_color = cls.apply_shade(elapsed_color, 0.2)
+        return played_hover_color
 
     @classmethod
     @lru_cache
@@ -729,7 +769,7 @@ class WaveformSeekBarPlugin(EventPlugin):
         box = create_color(_("Foreground color"), "elapsed_color")
         vbox.pack_start(box, True, True, 0)
 
-        box = create_color(_("Hover color"), "hover_color")
+        box = create_color(_("Hover color (unused)"), "hover_color")
         vbox.pack_start(box, True, True, 0)
 
         box = create_color(_("Remaining color"), "remaining_color")
